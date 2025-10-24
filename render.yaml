@@ -2,6 +2,7 @@ services:
   - type: worker
     name: telegram-imf-bot
     runtime: python
+    runtimeVersion: "3.11"
     region: frankfurt
     plan: starter
     branch: main
