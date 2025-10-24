@@ -46,6 +46,9 @@ class Settings:
     cleanup_time_hour: int = 2  # 02:00 AM
     timezone: str = "UTC"
 
+    # Environment Configuration
+    environment: str = "development"  # production, development, test
+
     @classmethod
     def from_env(cls) -> "Settings":
         """Load settings from environment variables.
@@ -85,7 +88,8 @@ class Settings:
             anthropic_api_key=anthropic_api_key,
             report_time_hour=int(os.getenv("REPORT_TIME_HOUR", "10")),
             cleanup_time_hour=int(os.getenv("CLEANUP_TIME_HOUR", "2")),
-            timezone=os.getenv("TIMEZONE", "UTC")
+            timezone=os.getenv("TIMEZONE", "UTC"),
+            environment=os.getenv("ENVIRONMENT", "development")
         )
 
 
