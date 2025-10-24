@@ -109,14 +109,18 @@ class TelegramBotService:
         """
         logger.info("Starting bot in polling mode...")
 
-        # Initialize bot
+        # In python-telegram-bot 20.x, we need to initialize and start separately
+        # But NOT call updater.start_polling directly
         await application.initialize()
         await application.start()
 
-        # Start polling
-        await application.updater.start_polling(
-            allowed_updates=Update.ALL_TYPES
-        )
+        # Start polling using the updater
+        # The updater should already be initialized by Application
+        if application.updater:
+            await application.updater.start_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True
+            )
 
         logger.info("Bot is now polling for updates")
 
@@ -128,8 +132,12 @@ class TelegramBotService:
         """
         logger.info("Stopping bot...")
 
-        await application.updater.stop()
-        await application.stop()
+        if application.updater and application.updater.running:
+            await application.updater.stop()
+
+        if application.running:
+            await application.stop()
+
         await application.shutdown()
 
         logger.info("Bot stopped successfully")

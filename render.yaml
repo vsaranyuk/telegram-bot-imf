@@ -1,0 +1,25 @@
+services:
+  - type: worker
+    name: telegram-imf-bot
+    runtime: python
+    region: frankfurt
+    plan: starter
+    branch: main
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m src.main
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite:///./bot_data.db
+      - key: LOG_LEVEL
+        value: INFO
+      - key: MESSAGE_RETENTION_HOURS
+        value: 48
+      - key: ENVIRONMENT
+        value: production
+      - key: PORT
+        value: 8080
+    autoDeploy: true

@@ -51,16 +51,36 @@ class Settings:
 
         Returns:
             Settings instance loaded from environment
+
+        Raises:
+            ValueError: If required environment variables are missing
         """
-        # Load .env file if it exists
+        # Load .env file if it exists (for local development)
         load_dotenv()
 
+        # Get required variables
+        telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
+        anthropic_api_key = os.getenv("ANTHROPIC_API_KEY", "")
+
+        # Validate required variables
+        if not telegram_bot_token:
+            raise ValueError(
+                "TELEGRAM_BOT_TOKEN environment variable is required but not set. "
+                "Please configure it in Render dashboard under Environment."
+            )
+
+        if not anthropic_api_key:
+            raise ValueError(
+                "ANTHROPIC_API_KEY environment variable is required but not set. "
+                "Please configure it in Render dashboard under Environment."
+            )
+
         return cls(
-            telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
+            telegram_bot_token=telegram_bot_token,
             database_url=os.getenv("DATABASE_URL", "sqlite:///./bot_data.db"),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             message_retention_hours=int(os.getenv("MESSAGE_RETENTION_HOURS", "48")),
-            anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
+            anthropic_api_key=anthropic_api_key,
             report_time_hour=int(os.getenv("REPORT_TIME_HOUR", "10")),
             cleanup_time_hour=int(os.getenv("CLEANUP_TIME_HOUR", "2")),
             timezone=os.getenv("TIMEZONE", "UTC")

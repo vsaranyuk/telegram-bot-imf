@@ -13,6 +13,8 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 
+from telegram import Update
+
 from src.config.settings import get_settings, configure_logging
 from src.config.database import init_db
 from src.services.telegram_bot_service import TelegramBotService
@@ -107,9 +109,6 @@ class BotApplication:
             logger.info("Starting health check server...")
             await self.health_server.start()
 
-            # Start bot polling
-            await self.bot_service.start_polling(self.application)
-
             self.running = True
 
             logger.info("="*60)
@@ -117,8 +116,12 @@ class BotApplication:
             logger.info("Press Ctrl+C to stop")
             logger.info("="*60)
 
-            # Keep the bot running
-            await self._keep_running()
+            # Start bot polling - this will run until stopped
+            # run_polling() handles initialize, start, and polling in one call
+            await self.application.run_polling(
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True
+            )
 
         except Exception as e:
             logger.error(f"Failed to start bot: {e}", exc_info=True)
@@ -147,9 +150,11 @@ class BotApplication:
             self.scheduler.shutdown(wait=False)
             logger.info("Scheduler stopped")
 
-        # Stop bot
-        if self.application:
-            await self.bot_service.stop_polling(self.application)
+        # Stop bot - run_polling() handles cleanup automatically
+        # but we can stop it explicitly if needed
+        if self.application and self.application.running:
+            await self.application.stop()
+            await self.application.shutdown()
 
         logger.info("Bot shut down complete")
 
