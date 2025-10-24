@@ -105,7 +105,7 @@ class BotApplication:
             self.setup_scheduler()
             self.scheduler.start()
 
-            # Start health check server first
+            # Start health check server
             logger.info("Starting health check server...")
             await self.health_server.start()
 
@@ -116,13 +116,20 @@ class BotApplication:
             logger.info("Press Ctrl+C to stop")
             logger.info("="*60)
 
-            # Start polling using the proper python-telegram-bot 20.x approach
-            # run_polling() is a convenience method that handles everything
-            await self.application.run_polling(
-                allowed_updates=Update.ALL_TYPES,
-                drop_pending_updates=True,
-                stop_signals=None  # Don't let PTB handle signals, we do it ourselves
-            )
+            # Use the async context manager pattern from python-telegram-bot 20.x docs
+            async with self.application:
+                await self.application.start()
+                await self.application.updater.start_polling(
+                    allowed_updates=Update.ALL_TYPES,
+                    drop_pending_updates=True
+                )
+
+                # Keep the bot running
+                await self._keep_running()
+
+                # Clean stop
+                await self.application.updater.stop()
+                await self.application.stop()
 
         except Exception as e:
             logger.error(f"Failed to start bot: {e}", exc_info=True)
