@@ -105,7 +105,7 @@ class BotApplication:
             self.setup_scheduler()
             self.scheduler.start()
 
-            # Start health check server
+            # Start health check server first
             logger.info("Starting health check server...")
             await self.health_server.start()
 
@@ -116,11 +116,12 @@ class BotApplication:
             logger.info("Press Ctrl+C to stop")
             logger.info("="*60)
 
-            # Start bot polling - this will run until stopped
-            # run_polling() handles initialize, start, and polling in one call
+            # Start polling using the proper python-telegram-bot 20.x approach
+            # run_polling() is a convenience method that handles everything
             await self.application.run_polling(
                 allowed_updates=Update.ALL_TYPES,
-                drop_pending_updates=True
+                drop_pending_updates=True,
+                stop_signals=None  # Don't let PTB handle signals, we do it ourselves
             )
 
         except Exception as e:
