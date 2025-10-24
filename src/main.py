@@ -88,6 +88,14 @@ class BotApplication:
             logger.info("Starting Telegram Bot for IMF")
             logger.info("="*60)
 
+            # Add startup delay in production to avoid conflicts during rolling deployment
+            # This gives the old instance time to disconnect from Telegram API
+            if self.settings.environment == "production":
+                startup_delay = 15  # seconds
+                logger.info(f"⏳ Production startup: waiting {startup_delay}s for clean deployment...")
+                await asyncio.sleep(startup_delay)
+                logger.info("✅ Startup delay complete, proceeding with initialization")
+
             # Initialize database
             logger.info("Initializing database...")
             init_db()
@@ -119,8 +127,8 @@ class BotApplication:
                 await self.application.start()
 
                 # Retry polling start to handle temporary conflicts during deployment
-                max_retries = 3
-                retry_delay = 5  # seconds
+                max_retries = 5
+                retry_delay = 10  # seconds
 
                 for attempt in range(max_retries):
                     try:
@@ -134,10 +142,10 @@ class BotApplication:
                         if "Conflict" in str(e) and attempt < max_retries - 1:
                             logger.warning(
                                 f"⚠️ Conflict detected during polling start (attempt {attempt + 1}/{max_retries}). "
-                                f"This is normal during deployment. Retrying in {retry_delay}s..."
+                                f"Previous bot instance still active. Retrying in {retry_delay}s..."
                             )
                             await asyncio.sleep(retry_delay)
-                            retry_delay *= 2  # Exponential backoff
+                            retry_delay *= 1.5  # Exponential backoff
                         else:
                             raise
 

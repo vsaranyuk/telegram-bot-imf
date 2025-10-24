@@ -8,12 +8,13 @@ services:
     branch: main
     buildCommand: pip install -r requirements.txt
     startCommand: python -m src.main
-    # Graceful shutdown configuration for zero-downtime deploys
-    preDeployCommand: sleep 5  # Wait for old instance to start shutdown
+    # Graceful shutdown configuration for Telegram bot with long polling
+    # Telegram bots need extra time to disconnect from getUpdates API cleanly
     healthCheckPath: /health
     healthCheckInterval: 30
-    # Increase shutdown timeout to ensure clean disconnect from Telegram API
-    shutdownSeconds: 30
+    # Extended shutdown timeout to ensure clean disconnect from Telegram API
+    # This prevents conflicts during rolling deployments
+    shutdownSeconds: 45
     envVars:
       - key: TELEGRAM_BOT_TOKEN
         sync: false
