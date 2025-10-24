@@ -21,12 +21,18 @@ from tests.fixtures.test_messages_dataset import (
 def claude_service():
     """Initialize Claude API service with real API key"""
     api_key = os.getenv("ANTHROPIC_API_KEY")
+    bot_token = os.getenv("TELEGRAM_BOT_TOKEN")
     if not api_key:
         pytest.skip("ANTHROPIC_API_KEY not set - skipping real API tests")
+    if not bot_token:
+        pytest.skip("TELEGRAM_BOT_TOKEN not set - skipping real API tests")
 
     # Create a mock settings object
     from src.config.settings import Settings
-    settings = Settings()
+    settings = Settings(
+        telegram_bot_token=bot_token,
+        anthropic_api_key=api_key
+    )
     return ClaudeAPIService(settings=settings)
 
 
