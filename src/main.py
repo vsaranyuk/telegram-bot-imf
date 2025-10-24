@@ -117,10 +117,29 @@ class BotApplication:
             # Use the async context manager pattern from python-telegram-bot 20.x docs
             async with self.application:
                 await self.application.start()
-                await self.application.updater.start_polling(
-                    allowed_updates=Update.ALL_TYPES,
-                    drop_pending_updates=True
-                )
+
+                # Retry polling start to handle temporary conflicts during deployment
+                max_retries = 3
+                retry_delay = 5  # seconds
+
+                for attempt in range(max_retries):
+                    try:
+                        await self.application.updater.start_polling(
+                            allowed_updates=Update.ALL_TYPES,
+                            drop_pending_updates=True
+                        )
+                        logger.info("✅ Bot polling started successfully")
+                        break
+                    except Exception as e:
+                        if "Conflict" in str(e) and attempt < max_retries - 1:
+                            logger.warning(
+                                f"⚠️ Conflict detected during polling start (attempt {attempt + 1}/{max_retries}). "
+                                f"This is normal during deployment. Retrying in {retry_delay}s..."
+                            )
+                            await asyncio.sleep(retry_delay)
+                            retry_delay *= 2  # Exponential backoff
+                        else:
+                            raise
 
                 # Keep the bot running
                 await self._keep_running()
