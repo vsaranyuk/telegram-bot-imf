@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -77,7 +77,7 @@ class ReportDeliveryService:
         logger.info("Starting daily report generation and delivery")
         logger.info("="*60)
 
-        start_time = datetime.utcnow()
+        start_time = datetime.now(timezone.utc)
 
         # Use database session context
         with get_db_session() as session:
@@ -133,7 +133,7 @@ class ReportDeliveryService:
                     await asyncio.sleep(self.STAGGER_DELAY_SECONDS)
 
         # Log summary
-        duration = (datetime.utcnow() - start_time).total_seconds()
+        duration = (datetime.now(timezone.utc) - start_time).total_seconds()
         logger.info("="*60)
         logger.info("Daily report delivery complete")
         logger.info(f"Duration: {duration:.1f} seconds")
@@ -153,7 +153,13 @@ class ReportDeliveryService:
                     f"HIGH FAILURE RATE: {failure_rate*100:.1f}% of chats failed "
                     f"({results['errors']}/{results['total_chats']})"
                 )
-                # TODO: Implement admin notification
+                # Send admin notification
+                await self._send_admin_notification(
+                    failure_rate=failure_rate,
+                    failed_count=results['errors'],
+                    total_count=results['total_chats'],
+                    failed_chat_ids=results['failed_chat_ids']
+                )
 
         return results
 
@@ -199,7 +205,7 @@ class ReportDeliveryService:
                 # Save report to database
                 report = Report(
                     chat_id=chat.id,
-                    generated_at=datetime.utcnow(),
+                    generated_at=datetime.now(timezone.utc),
                     questions_count=analysis.summary.total_questions,
                     answered_count=analysis.summary.answered,
                     unanswered_count=analysis.summary.unanswered,
@@ -228,7 +234,7 @@ class ReportDeliveryService:
             "📊 *Daily Communication Report* #IMFReport",
             f"Chat: {chat_name}",
             f"Period: Last 24 hours",
-            f"Generated: {datetime.utcnow().strftime('%Y-%m-%d %H:%M UTC')}",
+            f"Generated: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}",
             "",
             "━━━━━━━━━━━━━━━━━━━━━━━━━━━━",
             "",
@@ -337,3 +343,56 @@ class ReportDeliveryService:
                 break
 
         return False
+
+    async def _send_admin_notification(
+        self,
+        failure_rate: float,
+        failed_count: int,
+        total_count: int,
+        failed_chat_ids: List[int]
+    ) -> None:
+        """Send critical failure notification to admin.
+
+        Args:
+            failure_rate: Percentage of failed chats (0.0 to 1.0)
+            failed_count: Number of failed chats
+            total_count: Total number of chats processed
+            failed_chat_ids: List of chat IDs that failed
+        """
+        if self.settings.admin_chat_id == 0:
+            logger.warning(
+                "Admin notification needed but ADMIN_CHAT_ID not configured. "
+                "Set ADMIN_CHAT_ID environment variable to receive critical alerts."
+            )
+            return
+
+        # Build admin notification message
+        message = (
+            "🚨 *CRITICAL: High Report Delivery Failure Rate*\n\n"
+            f"⚠️ Failure Rate: *{failure_rate*100:.1f}%*\n"
+            f"📊 Failed: {failed_count}/{total_count} chats\n"
+            f"🕐 Time: {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n\n"
+            "Failed Chat IDs:\n"
+        )
+
+        if failed_chat_ids:
+            message += "\n".join([f"• Chat ID: `{chat_id}`" for chat_id in failed_chat_ids[:10]])
+            if len(failed_chat_ids) > 10:
+                message += f"\n... and {len(failed_chat_ids) - 10} more"
+        else:
+            message += "No specific chat IDs available"
+
+        message += "\n\n💡 Check logs for detailed error information."
+
+        try:
+            await self.bot.send_message(
+                chat_id=self.settings.admin_chat_id,
+                text=message,
+                parse_mode=ParseMode.MARKDOWN
+            )
+            logger.info(f"Admin notification sent to chat_id={self.settings.admin_chat_id}")
+        except TelegramError as e:
+            logger.error(
+                f"Failed to send admin notification to chat_id={self.settings.admin_chat_id}: {e}",
+                exc_info=True
+            )

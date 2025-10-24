@@ -9,7 +9,7 @@
         "Authorization: Bearer ${RENDER_API_KEY}"
       ],
       "env": {
-        "RENDER_API_KEY": "rnd_QKDKbr0ArWtKn2DavzRJTKMpAk8E"
+        "RENDER_API_KEY": "rnd_fbpGSWPbkYBXYCM3i1obr8YY23Md"
       }
     },
     "shadcn": {

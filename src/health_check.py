@@ -2,7 +2,7 @@
 
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional
 
 from aiohttp import web
@@ -30,7 +30,7 @@ class HealthCheckServer:
         self.app = web.Application()
         self.runner: Optional[web.AppRunner] = None
         self.site: Optional[web.TCPSite] = None
-        self.start_time = datetime.utcnow()
+        self.start_time = datetime.now(timezone.utc)
 
         # Register routes
         self.app.router.add_get('/health', self.health_handler)
@@ -42,12 +42,12 @@ class HealthCheckServer:
         Returns:
             JSON response with health status and scheduler info
         """
-        uptime_seconds = (datetime.utcnow() - self.start_time).total_seconds()
+        uptime_seconds = (datetime.now(timezone.utc) - self.start_time).total_seconds()
 
         health_data = {
             "status": "healthy",
             "uptime_seconds": int(uptime_seconds),
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
         }
 
         # Include scheduler status if available

@@ -1,10 +1,10 @@
 """Tests for health check server."""
 
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 from unittest.mock import Mock
 from aiohttp import web
-from aiohttp.test_utils import AioHTTPTestCase, unittest_run_loop
+from aiohttp.test_utils import AioHTTPTestCase
 
 from src.health_check import HealthCheckServer
 
@@ -22,7 +22,7 @@ class TestHealthCheckServer(AioHTTPTestCase):
         mock_job = Mock()
         mock_job.id = "test_job"
         mock_job.name = "Test Job"
-        mock_job.next_run_time = datetime.utcnow()
+        mock_job.next_run_time = datetime.now(timezone.utc)
 
         mock_scheduler.get_jobs = Mock(return_value=[mock_job])
 
@@ -30,7 +30,6 @@ class TestHealthCheckServer(AioHTTPTestCase):
         server = HealthCheckServer(port=8080, scheduler=mock_scheduler)
         return server.app
 
-    @unittest_run_loop
     async def test_health_endpoint(self):
         """Test /health endpoint returns healthy status."""
         resp = await self.client.request("GET", "/health")
@@ -42,7 +41,6 @@ class TestHealthCheckServer(AioHTTPTestCase):
         assert "timestamp" in data
         assert "scheduler" in data
 
-    @unittest_run_loop
     async def test_root_endpoint(self):
         """Test root endpoint also returns health status."""
         resp = await self.client.request("GET", "/")
@@ -51,7 +49,6 @@ class TestHealthCheckServer(AioHTTPTestCase):
         data = await resp.json()
         assert data["status"] == "healthy"
 
-    @unittest_run_loop
     async def test_scheduler_status_included(self):
         """Test scheduler status is included in response."""
         resp = await self.client.request("GET", "/health")

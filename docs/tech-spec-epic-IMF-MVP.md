@@ -1015,3 +1015,43 @@ pytest -k "test_question"
    - 24-hour windows difficult to test quickly
    - Use time mocking (freezegun library)
    - Verify logic, validate in production
+
+---
+
+## Post-Review Follow-ups
+
+**From Story IMF-MVP-3 (2025-10-24):**
+
+### Critical Priority
+1. **Fix Claude API Integration Test Fixtures** [H-1]
+   - Update `test_claude_api_accuracy.py:42` to use correct MessageAnalyzerService constructor
+   - 3 tests currently failing due to signature mismatch
+   - Must fix before production deployment
+
+### High Priority
+2. **Replace deprecated datetime.utcnow()** [H-2]
+   - Update `src/health_check.py` and `src/services/report_delivery_service.py`
+   - Use `datetime.now(timezone.utc)` for Python 3.14+ compatibility
+   - Affects: health check timestamps, report generation timing
+
+3. **Implement Admin Notification** [M-2]
+   - Complete TODO at `src/services/report_delivery_service.py:156`
+   - Send Telegram alert when >50% of chats fail report delivery
+   - Required by AC-004
+
+### Technical Debt
+4. **Fix Dockerfile PATH Configuration** [M-3]
+   - Correct ENV PATH to use botuser home directory
+   - Ensure Python packages accessible to non-root user
+
+5. **Remove Deprecated Test Decorators** [M-1]
+   - Clean up `@unittest_run_loop` in health check tests
+   - No longer needed in aiohttp 3.8+
+
+6. **Fix Manual Test Assertions** [L-1]
+   - Replace `return True` with proper assert statements
+   - File: `tests/manual/test_claude_api_simple.py`
+
+7. **Dependency Security Audit** [L-2]
+   - Run `pip-audit` or `safety check` before production
+   - Monitor pytest-asyncio for Python 3.16 compatibility updates

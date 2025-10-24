@@ -79,7 +79,15 @@ class ClaudeAPIService:
 
         Args:
             settings: Application settings with API key
+
+        Raises:
+            ValueError: If ANTHROPIC_API_KEY is not configured
         """
+        if not settings.anthropic_api_key:
+            raise ValueError(
+                "ANTHROPIC_API_KEY not configured. "
+                "Please set the ANTHROPIC_API_KEY environment variable."
+            )
         self.settings = settings
         self.client = Anthropic(api_key=settings.anthropic_api_key)
 
@@ -159,10 +167,10 @@ Return your analysis in this exact JSON format:
 }}"""
         return prompt
 
-    def analyze_messages(self, messages: List[Message]) -> AnalysisResult:
-        """Analyze messages using Claude API.
+    async def analyze_messages(self, messages: List[Message]) -> AnalysisResult:
+        """Analyze messages using Claude API (async).
 
-        Currently uses standard Messages API (synchronous).
+        Currently uses standard Messages API.
         TODO: Implement Message Batches for 50% cost savings.
 
         Args:
@@ -172,12 +180,8 @@ Return your analysis in this exact JSON format:
             AnalysisResult with questions, answers, and summary
 
         Raises:
-            ValueError: If API key is not configured
             Exception: If API call fails
         """
-        if not self.settings.anthropic_api_key:
-            raise ValueError("ANTHROPIC_API_KEY not configured")
-
         if not messages:
             # Return empty result for no messages
             return AnalysisResult(
@@ -197,8 +201,9 @@ Return your analysis in this exact JSON format:
             # Build prompt
             prompt = self._build_analysis_prompt(messages)
 
-            # Call Claude API
-            response = self.client.messages.create(
+            # Call Claude API in thread pool (SDK client is sync)
+            response = await asyncio.to_thread(
+                self.client.messages.create,
                 model=self.MODEL,
                 max_tokens=self.MAX_TOKENS,
                 messages=[{"role": "user", "content": prompt}],

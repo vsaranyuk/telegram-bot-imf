@@ -1,7 +1,7 @@
 """Message analyzer service - orchestrates AI analysis workflow."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -53,7 +53,7 @@ class MessageAnalyzerService:
         logger.info(f"Starting 24h analysis for chat_id={chat_id}")
 
         # Fetch messages from last 24 hours
-        since = datetime.utcnow() - timedelta(hours=24)
+        since = datetime.now(timezone.utc) - timedelta(hours=24)
         messages = self.message_repo.get_messages_since(chat_id, since)
 
         if not messages:

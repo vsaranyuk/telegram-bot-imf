@@ -17,9 +17,6 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
-# Copy Python dependencies from builder
-COPY --from=builder /root/.local /root/.local
-
 # Copy application code
 COPY . .
 
@@ -27,11 +24,15 @@ COPY . .
 RUN adduser --disabled-password --gecos '' --uid 1000 botuser && \
     chown -R botuser:botuser /app
 
+# Copy Python dependencies from builder to botuser home
+COPY --from=builder /root/.local /home/botuser/.local
+RUN chown -R botuser:botuser /home/botuser/.local
+
 # Switch to non-root user
 USER botuser
 
 # Make sure Python can find user-installed packages
-ENV PATH=/root/.local/bin:$PATH
+ENV PATH=/home/botuser/.local/bin:$PATH
 
 # Expose health check port
 EXPOSE 8080

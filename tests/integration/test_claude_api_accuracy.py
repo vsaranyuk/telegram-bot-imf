@@ -36,10 +36,6 @@ def claude_service():
     return ClaudeAPIService(settings=settings)
 
 
-@pytest.fixture
-def analyzer_service(claude_service):
-    """Initialize message analyzer service"""
-    return MessageAnalyzerService(claude_service=claude_service)
 
 
 @pytest.mark.integration
@@ -50,7 +46,7 @@ def analyzer_service(claude_service):
 class TestClaudeAPIAccuracy:
     """Test suite for validating Claude API accuracy against AC requirements"""
 
-    def test_ac002_question_detection_accuracy(self, analyzer_service):
+    async def test_ac002_question_detection_accuracy(self, claude_service):
         """
         AC-002: Validate question detection accuracy >90%
 
@@ -68,22 +64,25 @@ class TestClaudeAPIAccuracy:
         print(f"Target accuracy: {criteria['target_accuracy'] * 100}%")
         print(f"Minimum correct detections required: {criteria['min_correct_detections']}")
 
-        # Convert to format expected by analyzer
+        # Convert to Message objects expected by analyzer
+        from src.models.message import Message
         messages = []
         for msg in test_messages:
-            messages.append({
-                "id": msg["message_id"],
-                "text": msg["text"],
-                "timestamp": msg["timestamp"],
-                "user": "test_user",
-            })
+            messages.append(Message(
+                chat_id=123,
+                message_id=msg["message_id"],
+                user_id=1,
+                user_name="test_user",
+                text=msg["text"],
+                timestamp=msg["timestamp"]
+            ))
 
         # Run analysis
         print(f"\n🔄 Analyzing {len(messages)} messages with Claude API...")
-        analysis_result = analyzer_service.analyze_messages(messages)
+        analysis_result = await claude_service.analyze_messages(messages)
 
-        # Extract detected questions
-        detected_questions = analysis_result.get("questions", [])
+        # Extract detected questions from AnalysisResult object
+        detected_questions = analysis_result.questions
 
         # Calculate accuracy metrics
         true_positives = 0
@@ -91,7 +90,7 @@ class TestClaudeAPIAccuracy:
         false_positives = 0
         category_correct = 0
 
-        detected_ids = {q["message_id"] for q in detected_questions}
+        detected_ids = {q.message_id for q in detected_questions}
 
         # Check true positives and false negatives
         for msg in test_messages:
@@ -100,10 +99,10 @@ class TestClaudeAPIAccuracy:
                     true_positives += 1
                     # Check category correctness
                     detected_q = next(
-                        (q for q in detected_questions if q["message_id"] == msg["message_id"]),
+                        (q for q in detected_questions if q.message_id == msg["message_id"]),
                         None
                     )
-                    if detected_q and detected_q.get("category") == msg.get("expected_category"):
+                    if detected_q and detected_q.category == msg.get("expected_category"):
                         category_correct += 1
                 else:
                     false_negatives += 1
@@ -112,7 +111,7 @@ class TestClaudeAPIAccuracy:
         # Check false positives
         for detected_q in detected_questions:
             msg = next(
-                (m for m in test_messages if m["message_id"] == detected_q["message_id"]),
+                (m for m in test_messages if m["message_id"] == detected_q.message_id),
                 None
             )
             if msg and not msg["is_question"]:
@@ -141,7 +140,7 @@ class TestClaudeAPIAccuracy:
 
         print(f"\n✅ AC-002 PASSED: Question detection accuracy meets requirements!")
 
-    def test_ac003_answer_mapping_accuracy(self, analyzer_service):
+    async def test_ac003_answer_mapping_accuracy(self, claude_service):
         """
         AC-003: Validate answer mapping accuracy >85%
 
@@ -158,31 +157,36 @@ class TestClaudeAPIAccuracy:
         print(f"Target accuracy: {criteria['target_accuracy'] * 100}%")
         print(f"Minimum correct mappings required: {criteria['min_correct_mappings']}")
 
-        # Convert to format expected by analyzer
+        # Convert to Message objects expected by analyzer
+        from src.models.message import Message
         messages = []
         for pair in qa_pairs:
-            messages.append({
-                "id": pair["question_id"],
-                "text": pair["question_text"],
-                "timestamp": pair["question_timestamp"],
-                "user": "user_a",
-            })
-            messages.append({
-                "id": pair["answer_id"],
-                "text": pair["answer_text"],
-                "timestamp": pair["answer_timestamp"],
-                "user": "user_b",
-            })
+            messages.append(Message(
+                chat_id=123,
+                message_id=pair["question_id"],
+                user_id=1,
+                user_name="user_a",
+                text=pair["question_text"],
+                timestamp=pair["question_timestamp"]
+            ))
+            messages.append(Message(
+                chat_id=123,
+                message_id=pair["answer_id"],
+                user_id=2,
+                user_name="user_b",
+                text=pair["answer_text"],
+                timestamp=pair["answer_timestamp"]
+            ))
 
         # Sort by timestamp
-        messages = sorted(messages, key=lambda x: x["timestamp"])
+        messages = sorted(messages, key=lambda x: x.timestamp)
 
         # Run analysis
         print(f"\n🔄 Analyzing {len(messages)} messages (10 Q&A pairs) with Claude API...")
-        analysis_result = analyzer_service.analyze_messages(messages)
+        analysis_result = await claude_service.analyze_messages(messages)
 
-        # Extract detected questions with answers
-        detected_questions = analysis_result.get("questions", [])
+        # Extract detected questions with answers from AnalysisResult object
+        detected_questions = analysis_result.questions
 
         # Calculate mapping accuracy
         correct_mappings = 0
@@ -197,15 +201,15 @@ class TestClaudeAPIAccuracy:
 
             # Find detected question
             detected_q = next(
-                (q for q in detected_questions if q["message_id"] == question_id),
+                (q for q in detected_questions if q.message_id == question_id),
                 None
             )
 
             if detected_q:
                 # Check if answer is mapped
-                if detected_q.get("is_answered"):
-                    detected_answer_id = detected_q.get("answer_message_id")
-                    detected_response_time = detected_q.get("response_time_minutes")
+                if detected_q.is_answered:
+                    detected_answer_id = detected_q.answer_message_id
+                    detected_response_time = detected_q.response_time_minutes
 
                     # Check if mapping is correct
                     if detected_answer_id == expected_answer_id:
@@ -304,24 +308,29 @@ class TestClaudeAPIAccuracy:
     not os.getenv("ANTHROPIC_API_KEY"),
     reason="ANTHROPIC_API_KEY not set"
 )
-def test_api_authentication(claude_service):
+async def test_api_authentication(claude_service):
     """Test that Claude API authentication is working"""
     print("\n🔐 Testing Claude API authentication...")
 
-    # Simple test message
+    # Import Message model
+    from src.models.message import Message
+
+    # Simple test message as Message object
     test_messages = [
-        {
-            "id": 1,
-            "text": "Привет! Как дела?",
-            "timestamp": datetime.now(),
-            "user": "test_user",
-        }
+        Message(
+            chat_id=123,
+            message_id=1,
+            user_id=1,
+            user_name="test_user",
+            text="Привет! Как дела?",
+            timestamp=datetime.now()
+        )
     ]
 
-    analyzer = MessageAnalyzerService(claude_service=claude_service)
-    result = analyzer.analyze_messages(test_messages)
+    # Use claude_service directly for API testing
+    result = await claude_service.analyze_messages(test_messages)
 
     assert result is not None, "Claude API returned None"
-    assert "questions" in result or "summary" in result, "Claude API response format unexpected"
+    assert result.summary is not None, "Claude API response format unexpected"
 
     print("✅ Claude API authentication successful!")
