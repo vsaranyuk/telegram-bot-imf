@@ -1,7 +1,7 @@
 """Cleanup service for removing old messages."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from src.repositories.message_repository import MessageRepository
 from src.config.database import get_db_session
@@ -35,7 +35,7 @@ class CleanupService:
         try:
             # Calculate cutoff time based on retention policy
             retention_hours = self.settings.message_retention_hours
-            cutoff_time = datetime.now() - timedelta(hours=retention_hours)
+            cutoff_time = datetime.now(timezone.utc) - timedelta(hours=retention_hours)
 
             logger.info(
                 f"Starting cleanup: deleting messages older than {cutoff_time} "

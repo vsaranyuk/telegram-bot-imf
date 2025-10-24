@@ -1,7 +1,7 @@
 """Message repository for database operations."""
 
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 
 from sqlalchemy.orm import Session
@@ -68,7 +68,7 @@ class MessageRepository:
         Returns:
             List of messages ordered by timestamp descending
         """
-        cutoff_time = datetime.now() - timedelta(hours=24)
+        cutoff_time = datetime.now(timezone.utc) - timedelta(hours=24)
 
         messages = (
             self.session.query(Message)

@@ -37,7 +37,7 @@ story_location: "{project-root}/docs/stories"
 
 development_status:
   epic-imf-mvp: contexted
-  imf-mvp-1-message-collection-storage: done
+  imf-mvp-1-message-collection-storage: done # Post-review improvements completed 2025-10-24
   imf-mvp-2-ai-analysis-report-generation: done
-  imf-mvp-3-report-delivery-scheduling: in-progress
+  imf-mvp-3-report-delivery-scheduling: done
   epic-imf-mvp-retrospective: optional
