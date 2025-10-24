@@ -30,4 +30,4 @@ services:
         value: production
       - key: PORT
         value: 8080
-    autoDeploy: false
+    autoDeploy: true

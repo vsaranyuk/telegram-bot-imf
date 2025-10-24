@@ -90,8 +90,9 @@ class BotApplication:
 
             # Add startup delay in production to avoid conflicts during rolling deployment
             # This gives the old instance time to disconnect from Telegram API
+            # 60 seconds ensures old instance has fully shut down (45s shutdown + 15s buffer)
             if self.settings.environment == "production":
-                startup_delay = 15  # seconds
+                startup_delay = 60  # seconds
                 logger.info(f"⏳ Production startup: waiting {startup_delay}s for clean deployment...")
                 await asyncio.sleep(startup_delay)
                 logger.info("✅ Startup delay complete, proceeding with initialization")
