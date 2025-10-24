@@ -34,11 +34,16 @@ class MessageCollectorService:
             context: Bot context
         """
         if not update.message or not update.message.text:
+            logger.debug("Ignoring update: no message or no text content")
             return
 
         telegram_message = update.message
         chat_id = telegram_message.chat_id
         message_id = telegram_message.message_id
+
+        logger.debug(
+            f"📥 Received message: chat_id={chat_id}, message_id={message_id}"
+        )
 
         try:
             # Check if chat is whitelisted
@@ -75,11 +80,13 @@ class MessageCollectorService:
 
                 # Save to database
                 message_repo = MessageRepository(session)
+                logger.debug(f"💾 Saving message to database...")
                 saved_message = message_repo.save_message(message)
 
                 logger.info(
-                    f"Message collected: chat_id={chat_id}, "
-                    f"message_id={message_id}, user={user_name}"
+                    f"✅ Message collected: chat_id={chat_id}, "
+                    f"message_id={message_id}, user={user_name}, "
+                    f"text_length={len(text)} chars"
                 )
 
         except Exception as e:

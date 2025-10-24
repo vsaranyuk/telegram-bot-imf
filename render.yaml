@@ -23,7 +23,7 @@ services:
       - key: DATABASE_URL
         value: sqlite:///./bot_data.db
       - key: LOG_LEVEL
-        value: INFO
+        value: DEBUG
       - key: MESSAGE_RETENTION_HOURS
         value: 48
       - key: ENVIRONMENT

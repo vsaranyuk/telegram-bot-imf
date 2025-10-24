@@ -195,19 +195,24 @@ Return your analysis in this exact JSON format:
                 ),
             )
 
-        logger.info(f"Analyzing {len(messages)} messages with Claude API")
+        logger.info(f"🤖 Analyzing {len(messages)} messages with Claude API")
+        logger.debug(f"Using model: {self.MODEL}, max_tokens: {self.MAX_TOKENS}")
 
         try:
             # Build prompt
+            logger.debug("Building analysis prompt...")
             prompt = self._build_analysis_prompt(messages)
+            logger.debug(f"Prompt length: {len(prompt)} chars")
 
             # Call Claude API in thread pool (SDK client is sync)
+            logger.debug("Calling Claude API...")
             response = await asyncio.to_thread(
                 self.client.messages.create,
                 model=self.MODEL,
                 max_tokens=self.MAX_TOKENS,
                 messages=[{"role": "user", "content": prompt}],
             )
+            logger.debug(f"✅ Claude API response received")
 
             # Extract JSON from response
             response_text = response.content[0].text

@@ -117,5 +117,11 @@ def configure_logging(settings: Settings) -> None:
     )
 
     # Set specific log levels for noisy libraries
-    logging.getLogger("httpx").setLevel(logging.WARNING)
-    logging.getLogger("telegram").setLevel(logging.WARNING)
+    # In DEBUG mode, show more telegram library logs but keep httpx quiet
+    if log_level == logging.DEBUG:
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("telegram").setLevel(logging.INFO)
+        logging.getLogger("telegram.ext").setLevel(logging.DEBUG)
+    else:
+        logging.getLogger("httpx").setLevel(logging.WARNING)
+        logging.getLogger("telegram").setLevel(logging.WARNING)

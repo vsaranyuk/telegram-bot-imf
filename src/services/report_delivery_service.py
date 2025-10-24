@@ -84,8 +84,12 @@ class ReportDeliveryService:
             chat_repo = ChatRepository(session)
 
             # Get all enabled chats
+            logger.debug("📊 Fetching enabled chats from database...")
             enabled_chats = chat_repo.get_all_enabled_chats()
             logger.info(f"Found {len(enabled_chats)} enabled chats")
+
+            if enabled_chats:
+                logger.debug(f"Chat list: {[(c.chat_id, c.chat_name) for c in enabled_chats]}")
 
             if not enabled_chats:
                 logger.warning("No enabled chats found - skipping report delivery")
@@ -108,10 +112,11 @@ class ReportDeliveryService:
 
             # Process each chat with rate limiting
             for i, chat in enumerate(enabled_chats):
-                logger.info(f"Processing chat {i+1}/{len(enabled_chats)}: {chat.chat_name} (ID: {chat.chat_id})")
+                logger.info(f"📋 Processing chat {i+1}/{len(enabled_chats)}: {chat.chat_name} (ID: {chat.chat_id})")
 
                 try:
                     # Generate and deliver report for this chat
+                    logger.debug(f"Generating report for chat {chat.chat_id}...")
                     report_sent = await self._process_chat_report(chat)
 
                     if report_sent:
