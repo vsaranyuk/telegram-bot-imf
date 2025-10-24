@@ -1,5 +1,5 @@
 # Core Framework
-python-telegram-bot==20.7
+python-telegram-bot==22.5
 anthropic==0.71.0
 
 # Task Scheduling
