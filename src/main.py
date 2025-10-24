@@ -11,7 +11,6 @@ from datetime import time
 
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
-from apscheduler.jobstores.sqlalchemy import SQLAlchemyJobStore
 
 from telegram import Update
 
@@ -40,11 +39,10 @@ class BotApplication:
         self.cleanup_service = CleanupService()
         self.report_delivery_service = ReportDeliveryService()
 
-        # Configure scheduler with SQLite job store for persistence
-        jobstores = {
-            'default': SQLAlchemyJobStore(url='sqlite:///jobs.db')
-        }
-        self.scheduler = AsyncIOScheduler(jobstores=jobstores)
+        # Configure scheduler with in-memory job store
+        # Note: Jobs are not persisted across restarts, but this avoids
+        # pickle issues with Bot objects in python-telegram-bot 22.x
+        self.scheduler = AsyncIOScheduler()
         self.health_server = HealthCheckServer(port=8080, scheduler=self.scheduler)
         self.application = None
         self.running = False
@@ -78,7 +76,7 @@ class BotApplication:
         logger.info(f"  - Daily reports: Daily at {self.settings.report_time_hour:02d}:00")
         logger.info(f"  - Cleanup job: Daily at {self.settings.cleanup_time_hour:02d}:00")
         logger.info(f"  - Timezone: {self.settings.timezone}")
-        logger.info(f"  - Job store: SQLite (jobs.db) for persistence")
+        logger.info(f"  - Job store: In-memory (jobs reset on restart)")
 
     async def start(self) -> None:
         """Start the bot application.
