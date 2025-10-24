@@ -1,0 +1,206 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>IMF-MVP</epicId>
+    <storyId>IMF-MVP-3</storyId>
+    <title>Report Delivery &amp; Scheduling</title>
+    <status>TODO</status>
+    <generatedAt>2025-10-23</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-scheduling-delivery-3.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>team member monitoring partner communication</asA>
+    <iWant>daily reports automatically delivered to each chat at 10:00 AM</iWant>
+    <soThat>I have timely insights without manual intervention</soThat>
+    <tasks>
+      <task>Implement SchedulerService with APScheduler configuration and initialization</task>
+      <task>Create ReportDeliveryService for orchestrating report sending</task>
+      <task>Implement ConfigService for environment configuration management</task>
+      <task>Build health check endpoint (GET /health)</task>
+      <task>Create Dockerfile with proper security configuration (non-root user)</task>
+      <task>Configure GitHub Actions workflow for CI/CD</task>
+      <task>Implement rate limiting logic (5-second intervals between chats)</task>
+      <task>Add error handling with graceful degradation</task>
+      <task>Set up admin notification for critical failures (&gt;50% chats fail)</task>
+      <task>Configure persistent scheduler state (SQLite job store)</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac id="AC-001" title="Scheduler Setup">
+      <criterion>APScheduler configured and initialized</criterion>
+      <criterion>Cron trigger set for 10:00 AM daily (0 10 * * *)</criterion>
+      <criterion>Scheduler job persisted to SQLite (survives restarts)</criterion>
+      <criterion>Scheduler starts automatically with bot</criterion>
+      <criterion>Health check confirms scheduler is active</criterion>
+    </ac>
+    <ac id="AC-002" title="Report Delivery Timing">
+      <criterion>Reports triggered at 10:00 AM ±2 minutes</criterion>
+      <criterion>All enabled chats processed in sequence</criterion>
+      <criterion>Delivery completes within 15 minutes (15 chats × 5 min max)</criterion>
+      <criterion>Timing verified over 3 consecutive days</criterion>
+    </ac>
+    <ac id="AC-003" title="Delivery Logic">
+      <criterion>Report sent ONLY if questions detected (≥1 question)</criterion>
+      <criterion>If 0 questions, no report sent and logged</criterion>
+      <criterion>Reports sent to correct chat_id</criterion>
+      <criterion>Delivery confirmation received from Telegram API</criterion>
+      <criterion>last_report_sent timestamp updated in database</criterion>
+    </ac>
+    <ac id="AC-004" title="Error Handling">
+      <criterion>If Claude API fails for one chat, continue with others</criterion>
+      <criterion>If Telegram send fails, log error and continue</criterion>
+      <criterion>No cascading failures across chats</criterion>
+      <criterion>Admin notification if &gt;50% chats fail</criterion>
+      <criterion>Errors logged with context (chat_id, timestamp, details)</criterion>
+    </ac>
+    <ac id="AC-005" title="Rate Limiting">
+      <criterion>Reports staggered (5-second intervals between chats)</criterion>
+      <criterion>Telegram rate limit respected (30 msg/sec)</criterion>
+      <criterion>Retry logic with exponential backoff implemented</criterion>
+      <criterion>Rate limit errors (429) handled gracefully</criterion>
+    </ac>
+    <ac id="AC-006" title="Report Content Delivery">
+      <criterion>Markdown formatting renders correctly in Telegram</criterion>
+      <criterion>#IMFReport tag included for searchability</criterion>
+      <criterion>Links and formatting preserved</criterion>
+      <criterion>Long reports (&gt;4096 chars) split correctly</criterion>
+    </ac>
+    <ac id="AC-007" title="Docker Deployment">
+      <criterion>Dockerfile created with proper configuration</criterion>
+      <criterion>Container runs as non-root user</criterion>
+      <criterion>Environment variables injected securely</criterion>
+      <criterion>Health check endpoint responds (GET /health)</criterion>
+      <criterion>Container restart preserves scheduler state</criterion>
+    </ac>
+    <ac id="AC-008" title="CI/CD Pipeline">
+      <criterion>GitHub Actions workflow configured</criterion>
+      <criterion>Tests run on every push</criterion>
+      <criterion>Docker image built automatically</criterion>
+      <criterion>Deployment to Render triggered on main branch</criterion>
+      <criterion>Deployment completes within 10 minutes</criterion>
+    </ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Services and Modules</section>
+        <snippet>SchedulerService manages APScheduler, triggers daily report generation at 10:00 AM. ReportDeliveryService sends reports to appropriate chats via Telegram with rate limiting and error handling.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Workflows and Sequencing - Daily Report Generation</section>
+        <snippet>Daily Report Generation: SchedulerService triggers at 10:00 AM, processes each enabled chat with rate limiting (5-second intervals), handles errors gracefully by continuing with next chat if one fails.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Non-Functional Requirements - Performance</section>
+        <snippet>Report generation time: &lt; 5 minutes per chat. Daily delivery precision: ±2 minutes from 10:00 AM target. Throughput: 15 chats × 200 messages/day = 3,000 messages/day.</snippet>
+      </doc>
+      <doc>
+        <path>docs/research-technical-2025-10-23.md</path>
+        <title>Technical Research Report: Tech Stack</title>
+        <section>Recommended Architecture</section>
+        <snippet>APScheduler 3.11+ for in-process scheduling with cron triggers. Critical: Single-process deployment to avoid duplicate execution issues. Use persistent SQLite job store for reliability.</snippet>
+      </doc>
+      <doc>
+        <path>docs/research-technical-2025-10-23.md</path>
+        <title>Technical Research Report: Tech Stack</title>
+        <section>Hosting Platform - Render</section>
+        <snippet>Render platform with Docker deployment. Free tier available (sleeps after 15min). Hobby tier ($7/mo) for always-on production. Built-in health checks and auto-restart on failure.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <!-- No existing code - greenfield project. Key components to implement:
+           - SchedulerService: APScheduler management and job configuration
+           - ReportDeliveryService: Report sending orchestration with rate limiting
+           - ConfigService: Environment configuration management
+           - Health check endpoint for Render platform
+      -->
+    </code>
+    <dependencies>
+      <python>
+        <package name="APScheduler" version="3.10.4">Task scheduler with cron triggers and SQLite job store</package>
+        <package name="python-telegram-bot" version="20.7">Telegram Bot API wrapper (asyncio-based)</package>
+        <package name="python-dotenv" version="1.0.0">Environment variable management</package>
+        <package name="SQLAlchemy" version="2.0.23">ORM for database abstraction (job store)</package>
+        <package name="anthropic" version="0.18.0">Claude API Python SDK for AI analysis</package>
+        <package name="aiohttp" version="3.9.1">Async HTTP client</package>
+      </python>
+      <docker>
+        <base-image>python:3.11-slim</base-image>
+        <note>Container must run as non-root user (botuser)</note>
+      </docker>
+      <ci-cd>
+        <tool>GitHub Actions</tool>
+        <workflows>
+          <workflow>Run tests on push</workflow>
+          <workflow>Build Docker image</workflow>
+          <workflow>Deploy to Render on main branch</workflow>
+        </workflows>
+      </ci-cd>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Single-process Docker deployment (critical for APScheduler to avoid duplicate job execution)</constraint>
+    <constraint>Reports staggered with 5-second intervals between chats to respect Telegram rate limits (30 msg/sec)</constraint>
+    <constraint>Graceful degradation: If one chat fails, continue processing others (no cascading failures)</constraint>
+    <constraint>Admin notification required if &gt;50% of chats fail</constraint>
+    <constraint>All errors must be logged with context (chat_id, timestamp, error_details)</constraint>
+    <constraint>Health check endpoint required (GET /health) for Render platform monitoring</constraint>
+    <constraint>Container must run as non-root user for security</constraint>
+    <constraint>Environment variables must be injected securely (no hardcoded credentials)</constraint>
+    <constraint>Scheduler state must persist across container restarts (use SQLite job store)</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>APScheduler Job Configuration</name>
+      <kind>Python API</kind>
+      <signature>scheduler.add_job(generate_daily_reports, trigger='cron', hour=10, minute=0, id='daily_reports', replace_existing=True)</signature>
+      <path>docs/stories/story-scheduling-delivery-3.md</path>
+    </interface>
+    <interface>
+      <name>Telegram Bot API - Send Message</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /sendMessage {chat_id, text, parse_mode: "Markdown"}</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>Health Check Endpoint</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /health - Returns 200 OK if scheduler active and DB accessible</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>
+      Framework: pytest with pytest-asyncio for async test support. Coverage target: ≥80% overall.
+      Test pyramid: 60% unit tests, 35% integration tests, 5% E2E tests.
+      Mocking: Use pytest-mock and responses for external API calls (Telegram, Claude).
+      Database: In-memory SQLite for integration tests.
+      Docker testing: Build and run container for E2E validation.
+    </standards>
+    <locations>
+      <location>tests/unit/ - Unit tests for business logic</location>
+      <location>tests/integration/ - Integration tests for service interactions</location>
+      <location>tests/e2e/ - End-to-end tests with Docker</location>
+    </locations>
+    <ideas>
+      <test for="AC-002">Integration test: Mock scheduler trigger, verify report generation initiated at correct time. Test cron expression validation.</test>
+      <test for="AC-003">Integration test: Simulate report delivery to test chat. Mock Telegram API response. Verify message sent with correct formatting and #IMFReport tag.</test>
+      <test for="AC-004">Unit test: Create mock Claude API failure for one chat. Verify error logged and processing continues with remaining chats. Check no cascading failures.</test>
+      <test for="AC-005">Unit test: Test rate limiting logic with multiple chats. Verify 5-second intervals between sends. Mock time to speed up test.</test>
+      <test for="AC-006">Integration test: Send long report (&gt;4096 chars). Verify Telegram message split correctly. Check Markdown formatting preserved.</test>
+      <test for="AC-007">E2E test: Build Docker image, run container with test environment variables. Verify health check endpoint responds 200 OK. Check scheduler initialized.</test>
+      <test for="AC-008">E2E test: Simulate full CI/CD pipeline locally. Run tests, build image, verify deployment readiness. Check container restart preserves scheduler state.</test>
+    </ideas>
+  </tests>
+</story-context>

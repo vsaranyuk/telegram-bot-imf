@@ -1,0 +1,196 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>IMF-MVP</epicId>
+    <storyId>IMF-MVP-1</storyId>
+    <title>Message Collection &amp; Storage</title>
+    <status>TODO</status>
+    <generatedAt>2025-10-23</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-message-collection-1.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>bot administrator</asA>
+    <iWant>the bot to automatically collect and store messages from monitored Telegram chats</iWant>
+    <soThat>we have a 24-hour message history available for daily analysis</soThat>
+    <tasks>
+      <task>Implement TelegramBotService for bot lifecycle management</task>
+      <task>Create MessageCollectorService for message event handling</task>
+      <task>Build MessageRepository for database abstraction layer</task>
+      <task>Implement ChatRepository for chat configuration management</task>
+      <task>Design and implement database schema (Message, Chat entities)</task>
+      <task>Create database indexes for performance (chat_id, timestamp)</task>
+      <task>Implement cleanup job for 48-hour data retention</task>
+      <task>Set up bot to monitor 15 configured group chats</task>
+      <task>Capture message reactions (❤️ 👍 💩)</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac id="AC-001" title="Message Collection">
+      <criterion>Bot connects to Telegram API successfully</criterion>
+      <criterion>Bot monitors 15 configured group chats</criterion>
+      <criterion>New messages are captured within 2 seconds of posting</criterion>
+      <criterion>Messages include: chat_id, message_id, user_id, user_name, text, timestamp</criterion>
+      <criterion>Message reactions (❤️ 👍 💩) are captured</criterion>
+    </ac>
+    <ac id="AC-002" title="Database Storage">
+      <criterion>SQLite database initialized with proper schema</criterion>
+      <criterion>Messages persisted with all required fields</criterion>
+      <criterion>Database indexes created for performance (chat_id, timestamp)</criterion>
+      <criterion>Message lookup by chat_id and message_id works correctly</criterion>
+    </ac>
+    <ac id="AC-003" title="Configuration">
+      <criterion>Chat whitelist configuration from environment/database</criterion>
+      <criterion>Bot only monitors explicitly configured chats</criterion>
+      <criterion>Configuration can specify enabled/disabled chats</criterion>
+    </ac>
+    <ac id="AC-004" title="Data Retention">
+      <criterion>Cleanup job runs daily at 02:00 AM</criterion>
+      <criterion>Messages older than 48 hours are automatically deleted</criterion>
+      <criterion>Deletion count is logged</criterion>
+    </ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Services and Modules</section>
+        <snippet>TelegramBotService manages bot lifecycle, MessageCollectorService listens for new messages and stores them with metadata. MessageRepository abstracts database access for messages. ChatRepository manages chat configurations.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Data Models and Contracts - Message Entity</section>
+        <snippet>Message entity includes: id (PK), chat_id (indexed), message_id, user_id, user_name, text, timestamp (indexed), reactions (JSON), created_at. Indexes: idx_chat_timestamp, idx_message_lookup.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Workflows and Sequencing - Message Collection</section>
+        <snippet>TelegramBotService receives message event → MessageCollectorService extracts metadata → MessageRepository.save_message() persists to SQLite. Target latency: &lt;2 seconds.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Workflows and Sequencing - Database Cleanup</section>
+        <snippet>SchedulerService triggers cleanup job daily at 02:00 AM. MessageRepository.delete_old_messages(before=now() - 48h) removes old data. Deletion count logged.</snippet>
+      </doc>
+      <doc>
+        <path>docs/research-technical-2025-10-23.md</path>
+        <title>Technical Research Report</title>
+        <section>Recommended Architecture - Database</section>
+        <snippet>SQLite 3 for MVP: zero-config, file-based, ACID transactions. Repository pattern enables future PostgreSQL migration. Thread-safe mode required for concurrent reads.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <!-- Greenfield project - no existing code.
+           Key components to implement from scratch:
+           - TelegramBotService: Bot lifecycle and connection management
+           - MessageCollectorService: Event handlers for incoming messages
+           - MessageRepository: SQLAlchemy-based data access layer
+           - ChatRepository: Chat configuration management
+           - Database schema: Message and Chat entities with proper indexes
+      -->
+    </code>
+    <dependencies>
+      <python>
+        <package name="python-telegram-bot" version="20.7">
+          Telegram Bot API wrapper (asyncio-based). Core framework for bot functionality, message handling, and Telegram API integration.
+        </package>
+        <package name="SQLAlchemy" version="2.0.23">
+          ORM for database abstraction. Enables repository pattern and future PostgreSQL migration. Used for Message and Chat entities.
+        </package>
+        <package name="alembic" version="1.12.1">
+          Database migration tool for schema versioning. Manages Message and Chat table creation and updates.
+        </package>
+        <package name="python-dotenv" version="1.0.0">
+          Environment variable management for configuration (TELEGRAM_BOT_TOKEN, CHAT_IDS, LOG_LEVEL).
+        </package>
+        <package name="pydantic" version="2.5.0">
+          Data validation and settings management. Type-safe configuration handling.
+        </package>
+      </python>
+      <testing>
+        <package name="pytest" version="7.4.3">Testing framework for unit and integration tests</package>
+        <package name="pytest-asyncio" version="0.21.1">Asyncio support for pytest (required for async bot handlers)</package>
+        <package name="pytest-cov">Coverage reporting tool (target: ≥80% coverage)</package>
+        <package name="pytest-mock">Mocking utilities for external API calls</package>
+        <package name="factory_boy">Test fixture generation for Message and Chat entities</package>
+      </testing>
+      <development>
+        <tool>black==23.11.0 - Code formatter</tool>
+        <tool>mypy==1.7.1 - Static type checker</tool>
+      </development>
+      <note>Project uses Python 3.11+ with asyncio. SQLite 3 built-in (no external installation required).</note>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Message processing latency must be &lt;2 seconds from receipt to storage</constraint>
+    <constraint>Bot only monitors explicitly whitelisted chats (security requirement)</constraint>
+    <constraint>Messages older than 48 hours must be automatically deleted (data retention policy)</constraint>
+    <constraint>Repository pattern required for database abstraction (enables future PostgreSQL migration)</constraint>
+    <constraint>All database operations must use ACID transactions (SQLite thread-safe mode)</constraint>
+    <constraint>Message reactions (emojis) must be stored as JSON for flexibility</constraint>
+    <constraint>Database indexes required on (chat_id, timestamp) for performant 24h queries</constraint>
+    <constraint>Beginner-friendly implementation required (well-documented, simple patterns)</constraint>
+  </constraints>
+  <interfaces>
+    <interface>
+      <name>MessageRepository.save_message</name>
+      <kind>Python method</kind>
+      <signature>def save_message(message: Message) -> Message</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>MessageRepository.get_messages_last_24h</name>
+      <kind>Python method</kind>
+      <signature>def get_messages_last_24h(chat_id: int) -> List[Message]</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>MessageRepository.delete_old_messages</name>
+      <kind>Python method</kind>
+      <signature>def delete_old_messages(before_date: datetime) -> int</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>Telegram Bot API - getUpdates</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /getUpdates - Poll for new messages (development mode)</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>SQLite Message Schema</name>
+      <kind>Database schema</kind>
+      <signature>CREATE TABLE messages (id, chat_id, message_id, user_id, user_name, text, timestamp, reactions JSON, created_at, INDEX idx_chat_timestamp, INDEX idx_message_lookup)</signature>
+      <path>docs/stories/story-message-collection-1.md</path>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>
+      Framework: pytest with pytest-asyncio for async test support. Coverage target: ≥80% overall.
+      Test pyramid: 60% unit tests, 35% integration tests, 5% E2E tests.
+      Mocking: Use pytest-mock and responses library for Telegram API calls.
+      Database: In-memory SQLite for integration tests (fast, isolated).
+      Test data: factory_boy for generating test Message and Chat entities.
+    </standards>
+    <locations>
+      <location>tests/unit/ - Unit tests for repositories and business logic</location>
+      <location>tests/integration/ - Integration tests for bot-to-database flows</location>
+      <location>tests/e2e/ - End-to-end tests (future: full bot lifecycle)</location>
+    </locations>
+    <ideas>
+      <test for="AC-001">Integration test: Send mock Telegram message event → verify MessageCollectorService stores to database within 2 seconds. Mock python-telegram-bot Update object.</test>
+      <test for="AC-002">Unit test: Test MessageRepository.save_message() with all required fields (chat_id, message_id, user_id, user_name, text, timestamp, reactions). Verify indexes exist.</test>
+      <test for="AC-002">Integration test: Create Message entity, persist to SQLite, query by chat_id and message_id. Verify lookup performance with index.</test>
+      <test for="AC-003">Unit test: Test ChatRepository configuration loading. Verify bot only processes messages from enabled chats (whitelist check).</test>
+      <test for="AC-004">Integration test: Seed database with messages at various ages (10h, 30h, 50h old). Run cleanup job. Verify only messages &lt;48h remain. Check deletion count logged.</test>
+      <test for="AC-004">Unit test: Test MessageRepository.delete_old_messages() logic with datetime calculations. Verify correct date filtering.</test>
+      <test for="AC-001">Unit test: Test message reactions JSON parsing. Verify reactions stored as {"❤️": 5, "👍": 3, "💩": 1} format.</test>
+    </ideas>
+  </tests>
+</story-context>

@@ -1,0 +1,283 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>IMF-MVP</epicId>
+    <storyId>IMF-MVP-2</storyId>
+    <title>AI Analysis &amp; Report Generation</title>
+    <status>TODO</status>
+    <generatedAt>2025-10-23</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-ai-analysis-2.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>team member monitoring partner communication</asA>
+    <iWant>the bot to analyze messages using AI and generate structured reports</iWant>
+    <soThat>I can quickly understand question-answer patterns and response times</soThat>
+    <tasks>
+      <task>Implement ClaudeAPIService for batch processing with Claude API</task>
+      <task>Create MessageAnalyzerService for analysis orchestration</task>
+      <task>Build ReportGeneratorService for report formatting in Markdown</task>
+      <task>Implement ReportRepository for report persistence</task>
+      <task>Design and implement Report entity database schema</task>
+      <task>Configure Claude API authentication and batch job management</task>
+      <task>Implement question detection with AI (>90% accuracy target)</task>
+      <task>Implement answer mapping to questions (>85% accuracy target)</task>
+      <task>Build response time calculation and categorization logic</task>
+      <task>Generate structured Markdown reports with all required sections</task>
+      <task>Add cost tracking and monitoring for Claude API usage</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac id="AC-001" title="Claude API Integration">
+      <criterion>Claude API service configured with batch processing</criterion>
+      <criterion>API authentication working (ANTHROPIC_API_KEY)</criterion>
+      <criterion>Batch job creation successful</criterion>
+      <criterion>Batch status polling implemented (max 5 min wait)</criterion>
+      <criterion>Batch results retrieval and parsing working</criterion>
+    </ac>
+    <ac id="AC-002" title="Question Detection">
+      <criterion>AI identifies questions with >90% accuracy</criterion>
+      <criterion>Questions tagged with message_id and text</criterion>
+      <criterion>Questions categorized (technical/business/other)</criterion>
+      <criterion>Edge cases handled (rhetorical questions, multi-part questions)</criterion>
+    </ac>
+    <ac id="AC-003" title="Answer Mapping">
+      <criterion>Answers correctly mapped to questions with >85% accuracy</criterion>
+      <criterion>Response time calculated (time between question and answer)</criterion>
+      <criterion>Unanswered questions identified</criterion>
+      <criterion>Multiple answers to same question handled</criterion>
+    </ac>
+    <ac id="AC-004" title="Response Time Categorization">
+      <criterion>&lt;1 hour: Fast response</criterion>
+      <criterion>1-2 hours: Medium response</criterion>
+      <criterion>2-24 hours: Slow response</criterion>
+      <criterion>&gt;24 hours: Very slow response</criterion>
+      <criterion>No answer: Unanswered</criterion>
+      <criterion>Edge cases handled (weekend gaps, overnight messages)</criterion>
+    </ac>
+    <ac id="AC-005" title="Report Generation">
+      <criterion>Report includes header (date, chat name, #IMFReport tag)</criterion>
+      <criterion>Report includes summary (total questions, answered, unanswered)</criterion>
+      <criterion>Report includes response time stats (breakdown by category)</criterion>
+      <criterion>Report includes unanswered questions list with timestamps</criterion>
+      <criterion>Report includes top reactions (most ❤️ 👍 💩)</criterion>
+      <criterion>Report formatted in valid Markdown</criterion>
+      <criterion>Report renders correctly in Telegram</criterion>
+    </ac>
+    <ac id="AC-006" title="Data Persistence">
+      <criterion>Analysis results stored in database</criterion>
+      <criterion>Report content saved to Report entity</criterion>
+      <criterion>Historical reports queryable by chat_id and date</criterion>
+    </ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Services and Modules - ClaudeAPIService</section>
+        <snippet>Handles Claude API batch requests for message analysis. Input: Batch of messages. Output: Analysis results (questions, answers, mappings). Integrates with Anthropic Claude API using Message Batches for 50% cost savings.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Services and Modules - MessageAnalyzerService</section>
+        <snippet>Orchestrates AI analysis via Claude API. Input: Messages from last 24h. Output: Structured analysis data (questions with categories, Q→A mappings, response times).</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Services and Modules - ReportGeneratorService</section>
+        <snippet>Formats analysis into readable Telegram report. Input: Analysis data. Output: Formatted markdown report with sections: header, summary, response time stats, unanswered questions, top reactions.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Data Models - Report Entity</section>
+        <snippet>Report entity: id (PK), chat_id (FK), report_date (indexed), questions_count, answered_count, unanswered_count, avg_response_time_minutes, report_content (markdown text), sent_at. Index: idx_chat_date.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Data Models - Analysis Result Contract</section>
+        <snippet>Claude API returns JSON: questions array (message_id, text, category, is_answered, answer_message_id, response_time_minutes), answers array (message_id, text, answers_to_message_id), summary (total_questions, answered, unanswered, avg_response_time).</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>APIs and Interfaces - Claude API Endpoints</section>
+        <snippet>POST /v1/messages/batches - Create batch analysis job. GET /v1/messages/batches/{batch_id}/results - Retrieve batch results. Model: claude-3-5-sonnet-20241022. Batch discount: 50% off. Rate limits: 10,000 requests per batch.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Workflows - Daily Report Generation</section>
+        <snippet>Scheduled at 10:00 AM. For each chat: fetch 24h messages → MessageAnalyzerService.analyze() → ClaudeAPIService batch processing (max 5 min) → parse results → ReportGeneratorService.format_report() → save to ReportRepository.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Non-Functional Requirements - Performance</section>
+        <snippet>Report generation time: &lt;5 minutes per chat (target: 2-3 min average). Claude API batch processing: &lt;3 minutes. Report formatting and delivery: &lt;30 seconds.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Acceptance Criteria - AC-003: AI Analysis Question Detection</section>
+        <snippet>All questions identified with >90% accuracy. Each question tagged with message_id, text, category (technical/business/other). Test with 20 known questions dataset, measure precision/recall.</snippet>
+      </doc>
+      <doc>
+        <path>docs/tech-spec-epic-IMF-MVP.md</path>
+        <title>Technical Specification: Telegram Bot MVP</title>
+        <section>Acceptance Criteria - AC-004: AI Analysis Answer Mapping</section>
+        <snippet>Answers correctly mapped to questions with >85% accuracy. Response time calculated from timestamps. Test with 10 known Q→A pairs.</snippet>
+      </doc>
+      <doc>
+        <path>docs/research-technical-2025-10-23.md</path>
+        <title>Technical Research Report</title>
+        <section>Claude API - Message Batches for Cost Savings</section>
+        <snippet>Message Batches API offers 50% discount: Input $1.50/M tokens (vs $3), Output $7.50/M tokens (vs $15). Batch processing: submit requests, poll status (typically 2-5 min), retrieve results. Ideal for daily batch analysis.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <!-- Greenfield project - no existing code.
+           Key components to implement:
+           - ClaudeAPIService: Anthropic SDK integration, batch job management, status polling
+           - MessageAnalyzerService: Orchestration layer, prompt engineering, result parsing
+           - ReportGeneratorService: Markdown formatting, response time categorization, report structure
+           - ReportRepository: SQLAlchemy-based persistence for Report entity
+
+           Integration points:
+           - MessageRepository (from Story 1): Fetch 24h messages for analysis
+           - ReportDeliveryService (Story 3): Send generated reports to chats
+      -->
+    </code>
+    <dependencies>
+      <python>
+        <package name="anthropic" version="0.18.0">
+          Official Claude API Python SDK. Includes Message Batches API support for 50% cost savings. Core dependency for AI analysis functionality.
+        </package>
+        <package name="pydantic" version="2.5.0">
+          Data validation and settings. Used for validating Claude API responses, parsing JSON analysis results, and type-safe configuration.
+        </package>
+        <package name="SQLAlchemy" version="2.0.23">
+          ORM for Report entity persistence. Already used in Story 1 for Message/Chat entities.
+        </package>
+        <package name="aiohttp" version="3.9.1">
+          Async HTTP client used by anthropic SDK. Enables async Claude API batch requests.
+        </package>
+      </python>
+      <testing>
+        <package name="pytest" version="7.4.3">Testing framework for unit and integration tests</package>
+        <package name="pytest-asyncio" version="0.21.1">Async test support for Claude API integration tests</package>
+        <package name="pytest-mock">Mocking utilities for Claude API responses</package>
+        <package name="responses">HTTP mocking for Claude API endpoint testing</package>
+      </testing>
+      <note>Depends on MessageRepository from Story 1 for fetching 24h messages. Integrates with ReportDeliveryService (Story 3) for sending reports.</note>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Question detection accuracy must be >90% (tested with 20 known questions dataset)</constraint>
+    <constraint>Answer mapping accuracy must be >85% (tested with 10 known Q→A pairs)</constraint>
+    <constraint>Report generation time must be &lt;5 minutes per chat (target: 2-3 min)</constraint>
+    <constraint>Claude API batch processing timeout: max 5 minutes wait</constraint>
+    <constraint>Monthly Claude API costs must stay &lt;$30 (use batch processing for 50% discount)</constraint>
+    <constraint>Report must include all required sections: header, summary, response time stats, unanswered questions, top reactions</constraint>
+    <constraint>Reports formatted in valid Markdown that renders correctly in Telegram</constraint>
+    <constraint>Response time categorization: &lt;1h (Fast), 1-4h (Medium), 4-24h (Slow), >24h (Very Slow), No answer (Unanswered)</constraint>
+    <constraint>Analysis results must be persisted to Report entity for historical queries</constraint>
+    <constraint>Prompt engineering critical - iterate during POC to achieve accuracy targets</constraint>
+  </constraints>
+  <interfaces>
+    <interface>
+      <name>ClaudeAPIService.analyze_messages_batch</name>
+      <kind>Python method</kind>
+      <signature>def analyze_messages_batch(messages: List[Message]) -> AnalysisResult</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>ClaudeAPIService.check_batch_status</name>
+      <kind>Python method</kind>
+      <signature>def check_batch_status(batch_id: str) -> BatchStatus</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>ClaudeAPIService.get_batch_results</name>
+      <kind>Python method</kind>
+      <signature>def get_batch_results(batch_id: str) -> AnalysisResult</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>ReportGeneratorService.format_report</name>
+      <kind>Python method</kind>
+      <signature>def format_report(analysis: AnalysisResult) -> str (markdown)</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>ReportRepository.save_report</name>
+      <kind>Python method</kind>
+      <signature>def save_report(chat_id: int, report: Report) -> Report</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>Claude API - POST /v1/messages/batches</name>
+      <kind>REST endpoint</kind>
+      <signature>POST /v1/messages/batches - Create batch analysis job. Request: {requests: [{custom_id, params: {model, max_tokens, messages}}]}. Response: {id: batch_id, processing_status}</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>Claude API - GET /v1/messages/batches/{id}/results</name>
+      <kind>REST endpoint</kind>
+      <signature>GET /v1/messages/batches/{batch_id}/results - Retrieve batch results. Response: Stream of analysis results</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>Analysis Result Contract</name>
+      <kind>JSON schema</kind>
+      <signature>{"questions": [{"message_id", "text", "category", "is_answered", "answer_message_id", "response_time_minutes"}], "answers": [{"message_id", "text", "answers_to_message_id"}], "summary": {"total_questions", "answered", "unanswered", "avg_response_time_minutes"}}</signature>
+      <path>docs/tech-spec-epic-IMF-MVP.md</path>
+    </interface>
+    <interface>
+      <name>Report Entity Schema</name>
+      <kind>Database schema</kind>
+      <signature>CREATE TABLE reports (id, chat_id FK, report_date DATE, questions_count, answered_count, unanswered_count, avg_response_time_minutes, report_content TEXT, sent_at, INDEX idx_chat_date)</signature>
+      <path>docs/stories/story-ai-analysis-2.md</path>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>
+      Framework: pytest with pytest-asyncio for async Claude API tests. Coverage target: ≥80% overall.
+      Test pyramid: 60% unit tests (report formatting, time calculations), 35% integration tests (Claude API, full analysis flow), 5% E2E tests.
+      Mocking: Use pytest-mock and responses library for Claude API calls. Use real Claude API for critical integration tests (with test account).
+      Test data: Create datasets - 20 known questions (>90% accuracy validation), 10 known Q→A pairs (>85% accuracy validation), messages at specific time intervals (categorization validation).
+      Database: In-memory SQLite for Report entity tests.
+    </standards>
+    <locations>
+      <location>tests/unit/ - Unit tests for report formatting, response time calculations, JSON parsing</location>
+      <location>tests/integration/ - Integration tests for Claude API batch processing, full analysis flow</location>
+      <location>tests/fixtures/ - Test datasets (20 questions, 10 Q→A pairs, time-interval messages)</location>
+    </locations>
+    <ideas>
+      <test for="AC-001">Integration test: Create Claude API batch job with test messages. Verify batch creation, status polling (mock 5 min max), results retrieval. Mock anthropic SDK responses.</test>
+      <test for="AC-001">Unit test: Test ClaudeAPIService authentication with ANTHROPIC_API_KEY. Verify API key validation and error handling.</test>
+      <test for="AC-002">Integration test: Send 20 known questions dataset to Claude API. Parse results, measure precision/recall rates. Target: >90% accuracy.</test>
+      <test for="AC-002">Unit test: Test question categorization logic (technical/business/other). Verify category assignment based on keywords.</test>
+      <test for="AC-002">Unit test: Test edge cases - rhetorical questions ("Who knows?"), multi-part questions ("Question 1? Or question 2?"). Verify handling.</test>
+      <test for="AC-003">Integration test: Send 10 known Q→A pairs to Claude API. Verify answer mapping accuracy >85%. Check response time calculations match timestamps.</test>
+      <test for="AC-003">Unit test: Test MessageAnalyzerService.map_answers() with mock data. Verify Q→A matching logic, unanswered question identification.</test>
+      <test for="AC-003">Unit test: Test handling multiple answers to same question. Verify first/best answer selection or multiple answer tracking.</test>
+      <test for="AC-004">Unit test: Test response time categorization with known time intervals. Verify: &lt;1h=Fast, 1-4h=Medium, 4-24h=Slow, >24h=Very Slow, No answer=Unanswered.</test>
+      <test for="AC-004">Unit test: Test edge cases - weekend gaps (48h between messages), overnight messages (8h wait but normal). Verify categorization logic handles these correctly.</test>
+      <test for="AC-005">Unit test: Test ReportGeneratorService.format_report() with mock analysis data. Verify all sections present: header, summary, response time stats, unanswered questions, top reactions.</test>
+      <test for="AC-005">Unit test: Test Markdown formatting. Verify valid Markdown syntax, proper escaping of special characters.</test>
+      <test for="AC-005">Integration test: Generate report, send to test Telegram chat. Verify rendering looks correct in Telegram app.</test>
+      <test for="AC-006">Integration test: Save Report entity to database with analysis results. Query by chat_id and date. Verify persistence and retrieval.</test>
+      <test for="AC-006">Unit test: Test ReportRepository CRUD operations for Report entity. Verify all fields persisted correctly.</test>
+      <test for="General">Integration test: Full analysis flow - fetch 24h messages from MessageRepository → analyze with Claude API → format report → save to ReportRepository. Verify end-to-end.</test>
+      <test for="General">Unit test: Test cost tracking calculations. Verify token usage estimation matches expected $20-30/month projection.</test>
+    </ideas>
+  </tests>
+</story-context>
