@@ -28,6 +28,7 @@ class Settings:
     # Telegram Configuration
     telegram_bot_token: str
     admin_chat_id: int = 0  # Admin user Telegram chat ID for critical notifications
+    admin_user_id: int = 0  # Admin user Telegram ID for command access
 
     # Database Configuration
     database_url: str = "sqlite:///./bot_data.db"
@@ -82,6 +83,7 @@ class Settings:
         return cls(
             telegram_bot_token=telegram_bot_token,
             admin_chat_id=int(os.getenv("ADMIN_CHAT_ID", "0")),
+            admin_user_id=int(os.getenv("ADMIN_USER_ID", "0")),
             database_url=os.getenv("DATABASE_URL", "sqlite:///./bot_data.db"),
             log_level=os.getenv("LOG_LEVEL", "INFO"),
             message_retention_hours=int(os.getenv("MESSAGE_RETENTION_HOURS", "48")),

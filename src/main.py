@@ -13,6 +13,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.cron import CronTrigger
 
 from telegram import Update
+from telegram.ext import CommandHandler
 
 from src.config.settings import get_settings, configure_logging
 from src.config.database import init_db
@@ -21,6 +22,13 @@ from src.services.message_collector_service import MessageCollectorService
 from src.services.cleanup_service import CleanupService
 from src.services.report_delivery_service import ReportDeliveryService
 from src.health_check import HealthCheckServer
+from src.handlers.admin_commands import (
+    add_chat_command,
+    list_chats_command,
+    remove_chat_command,
+    get_chat_id_command,
+    admin_help_command,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -106,6 +114,18 @@ class BotApplication:
             self.application = self.bot_service.setup(
                 self.message_collector.handle_message
             )
+
+            # Store settings in bot_data for admin decorators
+            self.application.bot_data['settings'] = self.settings
+
+            # Register admin command handlers
+            logger.info("Registering admin commands...")
+            self.application.add_handler(CommandHandler("add_chat", add_chat_command))
+            self.application.add_handler(CommandHandler("list_chats", list_chats_command))
+            self.application.add_handler(CommandHandler("remove_chat", remove_chat_command))
+            self.application.add_handler(CommandHandler("get_chat_id", get_chat_id_command))
+            self.application.add_handler(CommandHandler("admin", admin_help_command))
+            logger.info("Admin commands registered")
 
             # Set up scheduler
             logger.info("Setting up scheduled tasks...")

@@ -20,6 +20,8 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      - key: ADMIN_USER_ID
+        sync: false
       - key: DATABASE_URL
         value: sqlite:///./bot_data.db
       - key: LOG_LEVEL
