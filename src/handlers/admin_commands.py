@@ -62,7 +62,7 @@ async def add_chat_command(
 
             if existing_chat:
                 # Update existing chat
-                existing_chat.name = chat_name
+                existing_chat.chat_name = chat_name
                 existing_chat.enabled = True
                 session.commit()
                 session.refresh(existing_chat)
@@ -83,7 +83,7 @@ async def add_chat_command(
                 # Create new chat
                 new_chat = Chat(
                     chat_id=chat_id,
-                    name=chat_name,
+                    chat_name=chat_name,
                     enabled=True
                 )
                 created_chat = chat_repo.save_chat(new_chat)
@@ -144,7 +144,7 @@ async def list_chats_command(
             for chat in chats:
                 created_at = chat.created_at.strftime("%Y-%m-%d %H:%M")
                 message_lines.append(
-                    f"• *{chat.name}*\n"
+                    f"• *{chat.chat_name}*\n"
                     f"  ID: `{chat.chat_id}`\n"
                     f"  Added: {created_at}\n"
                 )
@@ -208,14 +208,14 @@ async def remove_chat_command(
             session.refresh(chat)
 
             logger.info(
-                f"Admin removed chat: chat_id={chat_id}, name='{chat.name}', "
+                f"Admin removed chat: chat_id={chat_id}, name='{chat.chat_name}', "
                 f"admin_id={update.effective_user.id}"
             )
 
             await update.message.reply_text(
                 f"✅ Chat removed from whitelist:\n\n"
                 f"Chat ID: `{chat_id}`\n"
-                f"Name: {chat.name}\n"
+                f"Name: {chat.chat_name}\n"
                 f"Status: Disabled\n\n"
                 f"Bot will no longer collect messages from this chat.",
                 parse_mode="Markdown"
