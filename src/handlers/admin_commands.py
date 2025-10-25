@@ -58,13 +58,14 @@ async def add_chat_command(
             chat_repo = ChatRepository(session)
 
             # Check if chat already exists
-            existing_chat = chat_repo.get_chat(chat_id)
+            existing_chat = chat_repo.get_chat_by_id(chat_id)
 
             if existing_chat:
                 # Update existing chat
                 existing_chat.name = chat_name
                 existing_chat.enabled = True
-                updated_chat = chat_repo.update_chat(existing_chat)
+                session.commit()
+                session.refresh(existing_chat)
 
                 logger.info(
                     f"Admin updated chat: chat_id={chat_id}, name='{chat_name}', "
@@ -85,7 +86,7 @@ async def add_chat_command(
                     name=chat_name,
                     enabled=True
                 )
-                created_chat = chat_repo.create_chat(new_chat)
+                created_chat = chat_repo.save_chat(new_chat)
 
                 logger.info(
                     f"Admin added chat: chat_id={chat_id}, name='{chat_name}', "
@@ -129,7 +130,7 @@ async def list_chats_command(
     try:
         with get_db_session() as session:
             chat_repo = ChatRepository(session)
-            chats = chat_repo.get_enabled_chats()
+            chats = chat_repo.get_all_enabled_chats()
 
             if not chats:
                 await update.message.reply_text(
@@ -191,7 +192,7 @@ async def remove_chat_command(
 
         with get_db_session() as session:
             chat_repo = ChatRepository(session)
-            chat = chat_repo.get_chat(chat_id)
+            chat = chat_repo.get_chat_by_id(chat_id)
 
             if not chat:
                 await update.message.reply_text(
@@ -203,7 +204,8 @@ async def remove_chat_command(
 
             # Soft delete by setting enabled=False
             chat.enabled = False
-            updated_chat = chat_repo.update_chat(chat)
+            session.commit()
+            session.refresh(chat)
 
             logger.info(
                 f"Admin removed chat: chat_id={chat_id}, name='{chat.name}', "
