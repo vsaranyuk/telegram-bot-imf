@@ -60,6 +60,9 @@ Create a `.env` file with the following variables:
 # Telegram Bot Token (required)
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 
+# Admin User ID for command access (get from @userinfobot)
+ADMIN_USER_ID=0
+
 # Database URL (default: SQLite)
 DATABASE_URL=sqlite:///./bot_data.db
 
@@ -70,9 +73,68 @@ LOG_LEVEL=INFO
 MESSAGE_RETENTION_HOURS=48
 ```
 
-### Chat Whitelist
+### Admin Commands
 
-Add monitored chats to the database:
+**New!** You can now manage monitored chats directly through Telegram commands (no code required).
+
+#### Getting Your Telegram User ID
+
+1. Message [@userinfobot](https://t.me/userinfobot) on Telegram
+2. The bot will reply with your user ID
+3. Set this ID as `ADMIN_USER_ID` in your `.env` file or Render dashboard
+
+#### Setting Admin User ID
+
+In your `.env` file:
+```env
+ADMIN_USER_ID=123456789  # Your Telegram user ID from @userinfobot
+```
+
+**Security Note:** Keep your `ADMIN_USER_ID` private. Never commit it to git.
+
+#### Available Admin Commands
+
+Once configured, you can manage chats via Telegram:
+
+- `/get_chat_id` - Show current chat ID (works in any chat)
+- `/add_chat <chat_id> <chat_name>` - Add chat to whitelist (admin only)
+- `/list_chats` - Show all whitelisted chats (admin only)
+- `/remove_chat <chat_id>` - Remove chat from whitelist (admin only)
+- `/admin` - Show admin commands help (admin only)
+
+#### Example Workflow
+
+1. Go to the channel you want to monitor
+2. Send `/get_chat_id` to get the channel ID
+3. Copy the chat ID from the response
+4. Send `/add_chat -1001234567890 "Partner Channel"`
+5. The bot will now collect messages from that channel
+6. Use `/list_chats` to verify the chat was added
+
+#### Setting Up BotFather Commands
+
+To enable command autocomplete in Telegram:
+
+1. Message [@BotFather](https://t.me/botfather)
+2. Send `/mybots` → Select your bot → **Edit Bot** → **Edit Commands**
+3. Paste this command list:
+```
+add_chat - Add chat to whitelist (admin only)
+list_chats - Show whitelisted chats (admin only)
+remove_chat - Remove chat from whitelist (admin only)
+get_chat_id - Show current chat ID
+admin - Show admin commands help (admin only)
+```
+4. Commands will now appear in autocomplete for all users (but only admin can execute them)
+
+### Chat Whitelist (Legacy Method)
+
+**Note:** The legacy Python script method still works but admin commands are recommended for easier management.
+
+<details>
+<summary>Click to expand legacy Python method</summary>
+
+Add monitored chats to the database using Python:
 
 ```python
 from src.config.database import get_db_session
@@ -84,12 +146,14 @@ with get_db_session() as session:
 
     # Add a chat
     chat = Chat(
-        chat_id=12345678,  # Your Telegram chat ID
+        chat_id=-1001234567890,  # Your Telegram chat ID (negative for groups/channels)
         chat_name="Partner Chat",
         enabled=True
     )
     chat_repo.save_chat(chat)
 ```
+
+</details>
 
 ## Usage
 
