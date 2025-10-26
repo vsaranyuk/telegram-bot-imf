@@ -135,9 +135,11 @@ class BotApplication:
             self.setup_scheduler()
             self.scheduler.start()
 
-            # Start health check server
-            logger.info("Starting health check server...")
-            await self.health_server.start()
+            # Start health check server only in polling mode
+            # In webhook mode, WebhookServer provides the /health endpoint
+            if not self.settings.webhook_enabled:
+                logger.info("Starting health check server...")
+                await self.health_server.start()
 
             self.running = True
 
@@ -239,8 +241,9 @@ class BotApplication:
 
         self.running = False
 
-        # Stop health check server
-        await self.health_server.stop()
+        # Stop health check server (only runs in polling mode)
+        if not self.settings.webhook_enabled:
+            await self.health_server.stop()
 
         # Stop scheduler
         if self.scheduler.running:
