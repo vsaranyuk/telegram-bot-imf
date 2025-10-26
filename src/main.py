@@ -209,13 +209,10 @@ class BotApplication:
                 # Keep the bot running
                 await self._keep_running()
 
-                # Clean stop based on mode
+                # Clean stop based on mode (must happen while application is still active)
                 if self.settings.webhook_enabled:
-                    # Remove webhook from Telegram
+                    # Remove webhook from Telegram (requires active application)
                     await self.bot_service.remove_webhook()
-                    # Stop webhook server
-                    if self.webhook_server:
-                        await self.webhook_server.stop()
                 else:
                     # Stop polling
                     await self.application.updater.stop()
@@ -251,8 +248,8 @@ class BotApplication:
             logger.info("Scheduler stopped")
 
         # Stop webhook server if running in webhook mode
+        # Note: webhook removal happens in start() before exiting application context
         if self.webhook_server:
-            await self.bot_service.remove_webhook()
             await self.webhook_server.stop()
             logger.info("Webhook server stopped")
 
