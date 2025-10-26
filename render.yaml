@@ -1,5 +1,5 @@
 services:
-  - type: worker
+  - type: web
     name: telegram-imf-bot
     runtime: python
     runtimeVersion: "3.11"
@@ -31,5 +31,13 @@ services:
       - key: ENVIRONMENT
         value: production
       - key: PORT
+        value: 8080
+      - key: WEBHOOK_ENABLED
+        value: "false"
+      - key: WEBHOOK_URL
+        value: https://telegram-imf-bot.onrender.com/webhook
+      - key: WEBHOOK_SECRET_TOKEN
+        sync: false
+      - key: WEBHOOK_PORT
         value: 8080
     autoDeploy: true

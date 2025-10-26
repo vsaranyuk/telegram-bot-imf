@@ -41,3 +41,5 @@ development_status:
   imf-mvp-2-ai-analysis-report-generation: done # Phase 1 complete 2025-10-24 (SM approved for MVP deployment)
   imf-mvp-3-report-delivery-scheduling: done
   epic-imf-mvp-retrospective: completed # Retrospective completed 2025-10-24, saved to docs/retrospectives/epic-imf-mvp-retro-2025-10-24.md
+  epic-imf-infra: contexted
+  imf-infra-1-webhook-migration: in-progress # Development started 2025-10-26

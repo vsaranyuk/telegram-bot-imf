@@ -50,6 +50,12 @@ class Settings:
     # Environment Configuration
     environment: str = "development"  # production, development, test
 
+    # Webhook Configuration
+    webhook_enabled: bool = False  # Enable webhook mode (vs polling)
+    webhook_port: int = 8080  # Port for webhook HTTP server
+    webhook_url: str = ""  # Full webhook URL (e.g., https://your-app.onrender.com/webhook)
+    webhook_secret_token: str = ""  # Secret token for webhook validation
+
     @classmethod
     def from_env(cls) -> "Settings":
         """Load settings from environment variables.
@@ -91,7 +97,11 @@ class Settings:
             report_time_hour=int(os.getenv("REPORT_TIME_HOUR", "10")),
             cleanup_time_hour=int(os.getenv("CLEANUP_TIME_HOUR", "2")),
             timezone=os.getenv("TIMEZONE", "UTC"),
-            environment=os.getenv("ENVIRONMENT", "development")
+            environment=os.getenv("ENVIRONMENT", "development"),
+            webhook_enabled=os.getenv("WEBHOOK_ENABLED", "false").lower() == "true",
+            webhook_port=int(os.getenv("WEBHOOK_PORT", "8080")),
+            webhook_url=os.getenv("WEBHOOK_URL", ""),
+            webhook_secret_token=os.getenv("WEBHOOK_SECRET_TOKEN", "")
         )
 
 

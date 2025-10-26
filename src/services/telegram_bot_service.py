@@ -141,3 +141,51 @@ class TelegramBotService:
         await application.shutdown()
 
         logger.info("Bot stopped successfully")
+
+    async def setup_webhook(self, webhook_url: str, secret_token: str) -> None:
+        """Register webhook with Telegram API.
+
+        Args:
+            webhook_url: Full HTTPS URL for webhook endpoint
+            secret_token: Secret token for request validation
+
+        Raises:
+            Exception: If webhook registration fails
+        """
+        logger.info(f"🌐 Registering webhook: {webhook_url}")
+
+        try:
+            await self.application.bot.set_webhook(
+                url=webhook_url,
+                secret_token=secret_token,
+                allowed_updates=Update.ALL_TYPES,
+                drop_pending_updates=True,
+                max_connections=40  # Telegram default
+            )
+
+            # Verify webhook was set
+            webhook_info = await self.application.bot.get_webhook_info()
+
+            logger.info(f"✅ Webhook registered successfully")
+            logger.info(f"   URL: {webhook_info.url}")
+            logger.info(f"   Pending updates: {webhook_info.pending_update_count}")
+            logger.info(f"   Max connections: {webhook_info.max_connections}")
+
+        except Exception as e:
+            logger.error(f"Failed to set webhook: {e}", exc_info=True)
+            raise
+
+    async def remove_webhook(self) -> None:
+        """Remove webhook and return to polling mode.
+
+        This deletes the webhook from Telegram, allowing the bot
+        to fall back to long polling for updates.
+        """
+        logger.info("Removing webhook...")
+
+        try:
+            await self.application.bot.delete_webhook(drop_pending_updates=True)
+            logger.info("✅ Webhook removed successfully")
+        except Exception as e:
+            logger.error(f"Failed to remove webhook: {e}", exc_info=True)
+            raise

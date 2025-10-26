@@ -1,0 +1,283 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>IMF-INFRA</epicId>
+    <storyId>IMF-INFRA-1</storyId>
+    <title>Webhook Mode Migration for Production</title>
+    <status>To Do</status>
+    <generatedAt>2025-10-26</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/story-webhook-migration-infra-1.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>system operator</asA>
+    <iWant>the bot to use webhook mode instead of long polling in production</iWant>
+    <soThat>we achieve lower latency, reduced CPU usage, and enable zero-downtime deployments</soThat>
+    <tasks>
+      <critical-blocker>
+        Implement conditional startup in main.py:
+        - Add WebhookServer initialization when webhook_enabled=true
+        - Conditional startup logic (webhook vs polling modes)
+        - Set application instance for webhook server after bot setup
+        - Handle graceful shutdown for webhook mode
+        - Remove fixed 60s startup delay for webhook mode
+      </critical-blocker>
+      <phase name="Code Changes">
+        - Update render.yaml configuration (type: worker -> web, health checks)
+        - Update .env.example with webhook configuration template
+        - [RECOMMENDED] Enhance webhook_server.py graceful shutdown
+        - [RECOMMENDED] Enhance health check endpoint with JSON response
+      </phase>
+      <phase name="Infrastructure Setup">
+        - Generate WEBHOOK_SECRET_TOKEN (secrets.token_urlsafe(48))
+        - Configure Render environment variables
+      </phase>
+      <phase name="Deployment">
+        - Commit code changes
+        - Push to main branch (triggers auto-deploy)
+        - Monitor deployment logs
+      </phase>
+      <phase name="Validation">
+        - Run getWebhookInfo API call
+        - Send test messages
+        - Check response latency (<200ms)
+        - Monitor logs for errors (1 hour)
+        - Verify CPU usage reduction
+      </phase>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC-001">
+      <title>Infrastructure Configuration</title>
+      <items>
+        <item>render.yaml service type changed from `worker` to `web`</item>
+        <item>Health check endpoint `/health` configured (path, interval: 30s)</item>
+        <item>Graceful shutdown configured (shutdownSeconds: 45)</item>
+        <item>Environment variables added: WEBHOOK_ENABLED, WEBHOOK_URL, WEBHOOK_SECRET_TOKEN, WEBHOOK_PORT</item>
+      </items>
+    </criterion>
+    <criterion id="AC-002">
+      <title>Application Integration</title>
+      <items>
+        <item>main.py updated with conditional startup logic</item>
+        <item>WebhookServer integration in bot startup sequence</item>
+        <item>Webhook registration with Telegram API on startup</item>
+        <item>Graceful shutdown handling for in-flight webhook requests</item>
+      </items>
+    </criterion>
+    <criterion id="AC-003">
+      <title>Security Implementation</title>
+      <items>
+        <item>IP whitelist validation (149.154.160.0/20, 91.108.4.0/22)</item>
+        <item>Secret token validation (X-Telegram-Bot-Api-Secret-Token)</item>
+        <item>Constant-time comparison for secret token</item>
+        <item>HTTPS-only enforcement</item>
+      </items>
+    </criterion>
+    <criterion id="AC-004">
+      <title>Deployment & Verification</title>
+      <items>
+        <item>Deployment completed successfully</item>
+        <item>Webhook registered with Telegram API (verified via getWebhookInfo)</item>
+        <item>No last_error_date or last_error_message in webhook info</item>
+      </items>
+    </criterion>
+    <criterion id="AC-005">
+      <title>Performance Validation</title>
+      <items>
+        <item>Message delivery latency < 200ms</item>
+        <item>Bot responds to test messages successfully</item>
+        <item>No errors in production logs for 1 hour</item>
+        <item>CPU usage reduced by at least 40%</item>
+      </items>
+    </criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/architecture/ADR-001-webhook-migration.md</path>
+        <title>ADR-001: Migration from Polling to Webhook Mode</title>
+        <section>Context & Decision</section>
+        <snippet>Migration rationale: reduce latency from 1-2s to <100ms, lower CPU usage, enable zero-downtime deployments. WebhookServer with aiohttp already implemented (Phase 1 complete).</snippet>
+      </doc>
+      <doc>
+        <path>docs/WEBHOOK-MIGRATION-GUIDE.md</path>
+        <title>Webhook Migration Guide</title>
+        <section>Complete step-by-step guide</section>
+        <snippet>30-45 minute migration guide covering secret token generation, render.yaml updates, environment configuration, deployment, and validation steps.</snippet>
+      </doc>
+      <doc>
+        <path>docs/stories/epic-IMF-INFRA.md</path>
+        <title>Epic: Infrastructure & Performance</title>
+        <section>Overview</section>
+        <snippet>Performance optimization epic targeting <200ms latency, 50-70% CPU reduction, zero-downtime deployments.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>src/services/webhook_server.py</path>
+        <kind>service</kind>
+        <symbol>WebhookServer</symbol>
+        <lines>27-241</lines>
+        <reason>ALREADY IMPLEMENTED: Complete webhook server with aiohttp, IP validation, secret token verification, graceful shutdown. Ready for integration in main.py.</reason>
+        <interfaces>
+          <interface name="WebhookServer.__init__" signature="__init__(application: Application, settings: Settings, webhook_path: str = '/webhook')"/>
+          <interface name="WebhookServer.start" signature="async start() -> None"/>
+          <interface name="WebhookServer.stop" signature="async stop() -> None"/>
+          <interface name="_handle_webhook" signature="async _handle_webhook(request: web.Request) -> web.Response"/>
+        </interfaces>
+      </artifact>
+
+      <artifact>
+        <path>src/main.py</path>
+        <kind>application</kind>
+        <symbol>BotApplication</symbol>
+        <lines>36-183</lines>
+        <reason>REQUIRES MODIFICATION: Currently supports only polling mode. Need to add conditional startup logic for webhook/polling modes.</reason>
+        <current-behavior>
+          Lines 89-183: start() method only implements polling mode with application.updater.start_polling()
+        </current-behavior>
+        <required-changes>
+          - Add webhook_server: Optional[WebhookServer] = None in __init__
+          - Conditional init: if settings.webhook_enabled: self.webhook_server = WebhookServer(...)
+          - Conditional startup in start(): if webhook -> start_webhook_server() else: start_polling()
+          - Remove 60s fixed delay for webhook mode (lines 100-106)
+        </required-changes>
+      </artifact>
+
+      <artifact>
+        <path>src/config/settings.py</path>
+        <kind>configuration</kind>
+        <symbol>Settings</symbol>
+        <lines>14-108</lines>
+        <reason>WEBHOOK CONFIG EXISTS: Lines 53-57 define webhook_enabled, webhook_port, webhook_url, webhook_secret_token. Ready to use.</reason>
+      </artifact>
+
+      <artifact>
+        <path>src/services/telegram_bot_service.py</path>
+        <kind>service</kind>
+        <symbol>TelegramBotService</symbol>
+        <lines>1-200</lines>
+        <reason>Contains setup_webhook() and remove_webhook() methods for Telegram API webhook registration/removal.</reason>
+        <interfaces>
+          <interface name="setup_webhook" signature="async setup_webhook(webhook_url: str, secret_token: str) -> bool"/>
+          <interface name="remove_webhook" signature="async remove_webhook() -> bool"/>
+        </interfaces>
+      </artifact>
+
+      <artifact>
+        <path>render.yaml</path>
+        <kind>infrastructure</kind>
+        <lines>1-36</lines>
+        <reason>REQUIRES UPDATE: Currently type: worker. Need to change to type: web, add healthCheckPath, update envVars.</reason>
+        <current-config>
+          type: worker
+          healthCheckPath: /health (already present)
+          healthCheckInterval: 30 (already present)
+          shutdownSeconds: 45 (already present)
+        </current-config>
+        <required-changes>
+          - Change type: worker -> type: web
+          - Add WEBHOOK_ENABLED, WEBHOOK_URL, WEBHOOK_SECRET_TOKEN, WEBHOOK_PORT to envVars
+        </required-changes>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <python>
+        <package name="python-telegram-bot" version="22.5" reason="Core bot framework"/>
+        <package name="aiohttp" version="3.9.1" reason="Webhook HTTP server"/>
+        <package name="APScheduler" version="3.10.4" reason="Scheduled tasks"/>
+        <package name="SQLAlchemy" version=">=2.0.35" reason="Database ORM"/>
+        <package name="anthropic" version="0.71.0" reason="Claude API"/>
+        <package name="python-dotenv" version="1.0.0" reason="Environment configuration"/>
+      </python>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">
+      CRITICAL BLOCKER: main.py must implement conditional startup logic before deployment.
+      Missing integration between WebhookServer (already implemented) and BotApplication startup sequence.
+    </constraint>
+    <constraint type="security">
+      - IP whitelist validation REQUIRED (Telegram server IPs only)
+      - Secret token validation REQUIRED (constant-time comparison)
+      - HTTPS-only (Render provides automatically)
+    </constraint>
+    <constraint type="deployment">
+      - Zero-downtime: Render health checks + graceful shutdown (45s)
+      - Environment variables MUST be configured in Render dashboard before deployment
+      - Rollback plan: Set WEBHOOK_ENABLED=false to revert to polling mode
+    </constraint>
+    <constraint type="compatibility">
+      - Local development: WEBHOOK_ENABLED=false (polling mode)
+      - Production: WEBHOOK_ENABLED=true (webhook mode)
+      - Maintain backward compatibility with existing message collection flow
+    </constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>Telegram Bot API - setWebhook</name>
+      <kind>REST endpoint</kind>
+      <signature>POST https://api.telegram.org/bot{TOKEN}/setWebhook</signature>
+      <parameters>
+        url: Webhook URL (https://telegram-imf-bot.onrender.com/webhook)
+        secret_token: 64-char random token for validation
+      </parameters>
+    </interface>
+
+    <interface>
+      <name>Telegram Bot API - getWebhookInfo</name>
+      <kind>REST endpoint</kind>
+      <signature>GET https://api.telegram.org/bot{TOKEN}/getWebhookInfo</signature>
+      <purpose>Validation: Verify webhook registration and check for errors</purpose>
+    </interface>
+
+    <interface>
+      <name>Health Check Endpoint</name>
+      <kind>HTTP endpoint</kind>
+      <signature>GET /health</signature>
+      <path>src/health_check.py</path>
+      <purpose>Render health checks for zero-downtime deployments</purpose>
+      <recommended-enhancement>Return JSON with webhook_mode, active_requests, bot_running status</recommended-enhancement>
+    </interface>
+
+    <interface>
+      <name>Webhook Endpoint</name>
+      <kind>HTTP endpoint</kind>
+      <signature>POST /webhook</signature>
+      <path>src/services/webhook_server.py:118-156</path>
+      <validation>IP whitelist + secret token (X-Telegram-Bot-Api-Secret-Token header)</validation>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Project uses pytest with pytest-asyncio for async tests. Test coverage tracked via pytest-cov.
+      Integration tests exist but E2E tests deferred (require production API token).
+      Current coverage: 72% (88 tests passing in IMF-MVP-1).
+    </standards>
+
+    <locations>
+      - tests/ (root test directory)
+      - tests/services/ (service-level unit tests)
+      - tests/integration/ (integration tests)
+    </locations>
+
+    <ideas>
+      <test id="AC-001">Test render.yaml parsing to verify type=web and webhook env vars</test>
+      <test id="AC-002">Test BotApplication conditional startup (webhook vs polling modes)</test>
+      <test id="AC-002">Test WebhookServer initialization in main.py when webhook_enabled=true</test>
+      <test id="AC-003">Test IP whitelist validation (valid Telegram IPs pass, others rejected)</test>
+      <test id="AC-003">Test secret token validation (valid token passes, invalid rejected)</test>
+      <test id="AC-003">Test constant-time comparison for secret token</test>
+      <test id="AC-005">Integration test: Send test message, measure latency (<200ms)</test>
+      <note>Manual testing required for Render deployment, getWebhookInfo validation, production metrics</note>
+    </ideas>
+  </tests>
+</story-context>

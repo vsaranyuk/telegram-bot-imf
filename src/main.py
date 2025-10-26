@@ -21,6 +21,7 @@ from src.services.telegram_bot_service import TelegramBotService
 from src.services.message_collector_service import MessageCollectorService
 from src.services.cleanup_service import CleanupService
 from src.services.report_delivery_service import ReportDeliveryService
+from src.services.webhook_server import WebhookServer
 from src.health_check import HealthCheckServer
 from src.handlers.admin_commands import (
     add_chat_command,
@@ -49,10 +50,11 @@ class BotApplication:
 
         # Configure scheduler with in-memory job store
         # Note: Jobs are not persisted across restarts, but this avoids
-        # pickle issues with Bot objects in python-telegram-bot 22.x
+        # serialization issues with Bot objects in python-telegram-bot 22.x
         self.scheduler = AsyncIOScheduler()
         self.health_server = HealthCheckServer(port=8080, scheduler=self.scheduler)
         self.application = None
+        self.webhook_server = None  # Will be initialized after application setup if webhook_enabled
         self.running = False
 
     def setup_scheduler(self) -> None:
@@ -96,12 +98,13 @@ class BotApplication:
             logger.info("Starting Telegram Bot for IMF")
             logger.info("="*60)
 
-            # Add startup delay in production to avoid conflicts during rolling deployment
+            # Add startup delay in production polling mode to avoid conflicts during rolling deployment
             # This gives the old instance time to disconnect from Telegram API
             # 60 seconds ensures old instance has fully shut down (45s shutdown + 15s buffer)
-            if self.settings.environment == "production":
+            # Note: Webhook mode doesn't need this delay as it uses different connection pattern
+            if self.settings.environment == "production" and not self.settings.webhook_enabled:
                 startup_delay = 60  # seconds
-                logger.info(f"⏳ Production startup: waiting {startup_delay}s for clean deployment...")
+                logger.info(f"⏳ Production startup (polling mode): waiting {startup_delay}s for clean deployment...")
                 await asyncio.sleep(startup_delay)
                 logger.info("✅ Startup delay complete, proceeding with initialization")
 
@@ -138,43 +141,83 @@ class BotApplication:
 
             self.running = True
 
-            logger.info("="*60)
-            logger.info("Bot is now running!")
-            logger.info("Press Ctrl+C to stop")
-            logger.info("="*60)
-
             # Use the async context manager pattern from python-telegram-bot 20.x docs
             async with self.application:
                 await self.application.start()
 
-                # Retry polling start to handle temporary conflicts during deployment
-                max_retries = 5
-                retry_delay = 10  # seconds
+                # Initialize webhook server if webhook mode is enabled
+                if self.settings.webhook_enabled:
+                    logger.info("="*60)
+                    logger.info("Starting in WEBHOOK mode")
+                    logger.info("="*60)
 
-                for attempt in range(max_retries):
-                    try:
-                        await self.application.updater.start_polling(
-                            allowed_updates=Update.ALL_TYPES,
-                            drop_pending_updates=True
-                        )
-                        logger.info("✅ Bot polling started successfully")
-                        break
-                    except Exception as e:
-                        if "Conflict" in str(e) and attempt < max_retries - 1:
-                            logger.warning(
-                                f"⚠️ Conflict detected during polling start (attempt {attempt + 1}/{max_retries}). "
-                                f"Previous bot instance still active. Retrying in {retry_delay}s..."
+                    # Create webhook server with the application instance
+                    self.webhook_server = WebhookServer(
+                        application=self.application,
+                        settings=self.settings
+                    )
+
+                    # Start webhook HTTP server
+                    await self.webhook_server.start()
+
+                    # Register webhook with Telegram
+                    await self.bot_service.setup_webhook(
+                        webhook_url=self.settings.webhook_url,
+                        secret_token=self.settings.webhook_secret_token
+                    )
+
+                    logger.info("="*60)
+                    logger.info("Bot is now running in WEBHOOK mode!")
+                    logger.info("Press Ctrl+C to stop")
+                    logger.info("="*60)
+
+                else:
+                    logger.info("="*60)
+                    logger.info("Starting in POLLING mode (development)")
+                    logger.info("="*60)
+
+                    # Retry polling start to handle temporary conflicts during deployment
+                    max_retries = 5
+                    retry_delay = 10  # seconds
+
+                    for attempt in range(max_retries):
+                        try:
+                            await self.application.updater.start_polling(
+                                allowed_updates=Update.ALL_TYPES,
+                                drop_pending_updates=True
                             )
-                            await asyncio.sleep(retry_delay)
-                            retry_delay *= 1.5  # Exponential backoff
-                        else:
-                            raise
+                            logger.info("✅ Bot polling started successfully")
+                            break
+                        except Exception as e:
+                            if "Conflict" in str(e) and attempt < max_retries - 1:
+                                logger.warning(
+                                    f"⚠️ Conflict detected during polling start (attempt {attempt + 1}/{max_retries}). "
+                                    f"Previous bot instance still active. Retrying in {retry_delay}s..."
+                                )
+                                await asyncio.sleep(retry_delay)
+                                retry_delay *= 1.5  # Exponential backoff
+                            else:
+                                raise
+
+                    logger.info("="*60)
+                    logger.info("Bot is now running in POLLING mode!")
+                    logger.info("Press Ctrl+C to stop")
+                    logger.info("="*60)
 
                 # Keep the bot running
                 await self._keep_running()
 
-                # Clean stop
-                await self.application.updater.stop()
+                # Clean stop based on mode
+                if self.settings.webhook_enabled:
+                    # Remove webhook from Telegram
+                    await self.bot_service.remove_webhook()
+                    # Stop webhook server
+                    if self.webhook_server:
+                        await self.webhook_server.stop()
+                else:
+                    # Stop polling
+                    await self.application.updater.stop()
+
                 await self.application.stop()
 
         except Exception as e:
@@ -203,6 +246,12 @@ class BotApplication:
         if self.scheduler.running:
             self.scheduler.shutdown(wait=False)
             logger.info("Scheduler stopped")
+
+        # Stop webhook server if running in webhook mode
+        if self.webhook_server:
+            await self.bot_service.remove_webhook()
+            await self.webhook_server.stop()
+            logger.info("Webhook server stopped")
 
         # Stop bot - run_polling() handles cleanup automatically
         # but we can stop it explicitly if needed
